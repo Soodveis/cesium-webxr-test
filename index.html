@@ -49,14 +49,16 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: Cesium.createWorldTerrain(),
-        imageryProvider: new Cesium.BingMapsImageryProvider({
+        terrainProvider: new Cesium.CesiumTerrainProvider({
+        url: Cesium.IonResource.fromAssetId(1)
+          }),
+          imageryProvider: new Cesium.BingMapsImageryProvider({
           url: 'https://dev.virtualearth.net',
-          key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce',
-          mapStyle: Cesium.BingMapsStyle.AERIAL
-        }),
-        shouldAnimate: true
-      });
+        key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce',
+        mapStyle: Cesium.BingMapsStyle.AERIAL
+      }),
+      shouldAnimate: true
+    });
 
       try {
         const resource = Cesium.IonResource.fromAssetId(assetId);
