@@ -1,4 +1,11 @@
+let viewer = null;
+
 document.getElementById('enterAR').addEventListener('click', async () => {
+  if (!viewer) {
+    alert("Сначала загрузите сцену.");
+    return;
+  }
+
   if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
     navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local'] }).then(() => {
       alert("WebXR AR-сессия успешно запущена!");
@@ -19,10 +26,13 @@ window.saveSettings = function () {
 
   Cesium.Ion.defaultAccessToken = accessToken;
 
-  const viewer = new Cesium.Viewer('cesiumContainer', {
+  viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: new Cesium.CesiumTerrainProvider({
       url: Cesium.IonResource.fromAssetId(assetId)
     }),
+    imageryProvider: new Cesium.IonImageryProvider({ assetId }),
     shouldAnimate: true
   });
+
+  viewer.scene.globe.enableLighting = true;
 };
