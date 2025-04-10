@@ -15,7 +15,7 @@ document.getElementById('enterAR').addEventListener('click', async () => {
   }
 });
 
-window.saveSettings = function () {
+window.saveSettings = async function () {
   const accessToken = document.getElementById('accessToken').value.trim();
   const assetId = parseInt(document.getElementById('assetId').value.trim());
 
@@ -26,11 +26,15 @@ window.saveSettings = function () {
 
   Cesium.Ion.defaultAccessToken = accessToken;
 
+  const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(assetId);
+
   viewer = new Cesium.Viewer('cesiumContainer', {
-    terrainProvider: new Cesium.CesiumTerrainProvider({
-      url: Cesium.IonResource.fromAssetId(assetId)
+    terrainProvider: terrain,
+    imageryProvider: new Cesium.BingMapsImageryProvider({
+      url: 'https://dev.virtualearth.net',
+      key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce', // ключ Cesium
+      mapStyle: Cesium.BingMapsStyle.AERIAL
     }),
-    imageryProvider: new Cesium.IonImageryProvider({ assetId }),
     shouldAnimate: true
   });
 
