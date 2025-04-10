@@ -31,8 +31,53 @@
     <div>
       Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
     </div>
-    <button onclick="saveSettings()">Загрузить сцену</button>
+    <button id="loadScene">Загрузить сцену</button>
   </div>
-  <script src="main.js"></script>
+  <script type="module">
+    import { Viewer, Ion, KmlDataSource, createWorldTerrain, BingMapsImageryProvider, BingMapsStyle } from "https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js";
+
+    let viewer;
+
+    document.getElementById('loadScene').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Пожалуйста, введите Access Token и Asset ID");
+        return;
+      }
+
+      Ion.defaultAccessToken = token;
+
+      viewer = new Viewer('cesiumContainer', {
+        terrainProvider: createWorldTerrain(),
+        imageryProvider: new BingMapsImageryProvider({
+          url: 'https://dev.virtualearth.net',
+          key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce',
+          mapStyle: BingMapsStyle.AERIAL
+        }),
+        shouldAnimate: true
+      });
+
+      try {
+        const dataSource = await KmlDataSource.load(Ion.resource.fromAssetId(assetId));
+        viewer.dataSources.add(dataSource);
+        viewer.flyTo(dataSource);
+      } catch (error) {
+        console.error("Ошибка загрузки KML:", error);
+        alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
+      }
+    };
+
+    document.getElementById('enterAR').onclick = function () {
+      if (navigator.xr) {
+        navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'] })
+          .then(() => alert("WebXR AR-сессия успешно запущена!"))
+          .catch(err => alert("Ошибка запуска AR-сессии: " + err));
+      } else {
+        alert("Ваш браузер не поддерживает WebXR.");
+      }
+    };
+  </script>
 </body>
 </html>
