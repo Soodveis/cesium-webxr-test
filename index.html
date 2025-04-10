@@ -33,9 +33,7 @@
     </div>
     <button id="loadScene">Загрузить сцену</button>
   </div>
-  <script type="module">
-    import { Viewer, Ion, KmlDataSource, createWorldTerrain, BingMapsImageryProvider, BingMapsStyle } from "https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js";
-
+  <script>
     let viewer;
 
     document.getElementById('loadScene').onclick = async function () {
@@ -47,20 +45,16 @@
         return;
       }
 
-      Ion.defaultAccessToken = token;
+      Cesium.Ion.defaultAccessToken = token;
 
-      viewer = new Viewer('cesiumContainer', {
-        terrainProvider: createWorldTerrain(),
-        imageryProvider: new BingMapsImageryProvider({
-          url: 'https://dev.virtualearth.net',
-          key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce',
-          mapStyle: BingMapsStyle.AERIAL
-        }),
+      viewer = new Cesium.Viewer('cesiumContainer', {
+        terrainProvider: Cesium.createWorldTerrain(),
         shouldAnimate: true
       });
 
       try {
-        const dataSource = await KmlDataSource.load(Ion.resource.fromAssetId(assetId));
+        const resource = Cesium.IonResource.fromAssetId(assetId);
+        const dataSource = await Cesium.KmlDataSource.load(resource);
         viewer.dataSources.add(dataSource);
         viewer.flyTo(dataSource);
       } catch (error) {
