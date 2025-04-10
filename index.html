@@ -48,16 +48,14 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: new Cesium.CesiumTerrainProvider({
-          url: Cesium.IonResource.fromAssetId(1)
-        }),
+        terrainProvider: Cesium.createDefaultTerrainProviderViewModels()[0].creationFunction(),
         imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
         shouldAnimate: true
       });
 
       try {
         const kmlDataSource = await Cesium.KmlDataSource.load(
-          Cesium.IonResource.fromAssetId(Number(assetId))
+          await Cesium.IonResource.fromAssetId(Number(assetId))
         );
         viewer.dataSources.add(kmlDataSource);
         viewer.flyTo(kmlDataSource);
