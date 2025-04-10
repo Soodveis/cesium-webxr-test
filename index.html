@@ -33,6 +33,7 @@
     </div>
     <button id="loadScene">Загрузить сцену</button>
   </div>
+
   <script>
     let viewer;
 
@@ -49,6 +50,11 @@
 
       viewer = new Cesium.Viewer('cesiumContainer', {
         terrainProvider: Cesium.createWorldTerrain(),
+        imageryProvider: new Cesium.BingMapsImageryProvider({
+          url: 'https://dev.virtualearth.net',
+          key: 'Agi1Q9ZKxoK5eW0Jw0AQ02ZwLz1g0xJc3xFG9dyNjNljZgk0hxYQRYsYgkztlKce',
+          mapStyle: Cesium.BingMapsStyle.AERIAL
+        }),
         shouldAnimate: true
       });
 
