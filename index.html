@@ -146,15 +146,10 @@
       scene.add(cube);
 
       try {
-        xrRefSpace = await xrSession.requestReferenceSpace('local');
+        xrRefSpace = await xrSession.requestReferenceSpace('viewer');
       } catch (err) {
-        console.warn("Не удалось запросить reference space 'local'. Пробуем 'viewer'.", err);
-        try {
-          xrRefSpace = await xrSession.requestReferenceSpace('viewer');
-        } catch (err2) {
-          alert("Ошибка запроса reference space: " + err2);
-          return;
-        }
+        alert("Ошибка запроса reference space: " + err);
+        return;
       }
 
       let viewerSpace;
