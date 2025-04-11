@@ -115,7 +115,6 @@
 
         if (currentSession) {
           await currentSession.end();
-          return; // Предотвращаем запуск новой сессии до завершения предыдущей
         }
 
         const session = await navigator.xr.requestSession('immersive-ar', {
@@ -150,7 +149,8 @@
         const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
         const onXRFrame = (time, frame) => {
-          const session = frame.session;
+          if (!currentSession) return;
+
           const pose = frame.getViewerPose(refSpace);
           if (pose) {
             const hits = frame.getHitTestResults(hitTestSource);
@@ -168,7 +168,9 @@
 
         session.addEventListener('end', () => {
           currentSession = null;
-          canvas.remove();
+          if (canvas && canvas.parentElement) {
+            canvas.parentElement.removeChild(canvas);
+          }
         });
 
       } catch (err) {
