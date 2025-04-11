@@ -45,6 +45,7 @@
 
     let viewer;
     let currentSession = null;
+    let renderer, canvas;
 
     function validateInputs() {
       const token = document.getElementById('accessToken').value.trim();
@@ -114,6 +115,7 @@
 
         if (currentSession) {
           await currentSession.end();
+          return; // Предотвращаем запуск новой сессии до завершения предыдущей
         }
 
         const session = await navigator.xr.requestSession('immersive-ar', {
@@ -124,11 +126,11 @@
 
         currentSession = session;
 
-        const canvas = document.createElement('canvas');
+        canvas = document.createElement('canvas');
         canvas.className = 'xr-canvas';
         document.body.appendChild(canvas);
 
-        const renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
+        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
         renderer.xr.enabled = true;
         renderer.xr.setReferenceSpaceType('local');
         await renderer.xr.setSession(session);
