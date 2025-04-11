@@ -106,15 +106,10 @@
         return;
       }
 
-      const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
-      if (!isSupported) {
-        alert("Ваше устройство не поддерживает AR-сессии WebXR.");
-        return;
-      }
-
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
+          optionalFeatures: ['local-floor', 'bounded-floor', 'viewer'],
           domOverlay: { root: document.body }
         });
       } catch (err) {
@@ -141,19 +136,18 @@
       cube.visible = false;
       scene.add(cube);
 
-      try {
-        xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
-      } catch (e1) {
+      let refSpaceTypes = ['local-floor', 'local', 'viewer'];
+      for (let type of refSpaceTypes) {
         try {
-          xrRefSpace = await xrSession.requestReferenceSpace('local');
-        } catch (e2) {
-          try {
-            xrRefSpace = await xrSession.requestReferenceSpace('viewer');
-          } catch (e3) {
-            alert("Ваше устройство не поддерживает типы reference space 'local-floor', 'local', или 'viewer'.");
-            return;
-          }
+          xrRefSpace = await xrSession.requestReferenceSpace(type);
+          break;
+        } catch (e) {
+          console.warn(`Не удалось получить reference space '${type}':`, e);
         }
+      }
+      if (!xrRefSpace) {
+        alert("Ваше устройство не поддерживает необходимые reference space типы.");
+        return;
       }
 
       let viewerSpace;
@@ -183,7 +177,7 @@
       xrSession.requestAnimationFrame(onXRFrame);
     }
 
-    document.getElementById('enterAR').onclick = function () {
+    document.getElementById('enterAR').onclick = async function () {
       const token = document.getElementById('accessToken').value.trim();
       const assetId = document.getElementById('assetId').value.trim();
 
@@ -192,27 +186,20 @@
         return;
       }
 
-      if (!('xr' in navigator)) {
-        alert("WebXR не поддерживается вашим браузером.");
-        return;
-      }
-
-      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+      try {
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!supported) {
           alert("WebXR AR не поддерживается на этом устройстве.");
           return;
         }
-
-        startAR().then(() => {
-          alert("WebXR AR-сессия успешно запущена!");
-        }).catch(err => {
-          alert("Ошибка запуска AR-сессии: " + err);
-        });
-      });
+        await startAR();
+        alert("WebXR AR-сессия успешно запущена!");
+      } catch (err) {
+        alert("Ошибка запуска AR-сессии: " + err);
+      }
     };
 
     window.onload = loadSceneFromStorage;
   </script>
 </body>
 </html>
-
