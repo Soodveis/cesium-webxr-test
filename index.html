@@ -48,9 +48,10 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: Cesium.createWorldTerrain(),
-        shouldAnimate: true,
-        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 })
+        terrainProvider: await Cesium.IonResource.fromAssetId(1)
+          .then(resource => new Cesium.CesiumTerrainProvider({ url: resource })),
+        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+        shouldAnimate: true
       });
 
       try {
