@@ -49,8 +49,7 @@
     function validateInputs() {
       const token = document.getElementById('accessToken').value.trim();
       const assetId = document.getElementById('assetId').value.trim();
-      const enterARButton = document.getElementById('enterAR');
-      enterARButton.disabled = !(token && assetId);
+      document.getElementById('enterAR').disabled = !(token && assetId);
     }
 
     document.getElementById('accessToken').addEventListener('input', validateInputs);
@@ -59,7 +58,6 @@
     async function loadSceneFromStorage() {
       const token = localStorage.getItem('cesiumToken');
       const assetId = localStorage.getItem('cesiumAssetId');
-
       if (token && assetId) {
         document.getElementById('accessToken').value = token;
         document.getElementById('assetId').value = assetId;
@@ -70,7 +68,6 @@
 
     async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
-
       viewer = new Cesium.Viewer('cesiumContainer', {
         imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
         baseLayerPicker: true,
@@ -121,7 +118,6 @@
           domOverlay: { root: document.body }
         });
       } catch (err) {
-        console.error("Ошибка при запросе XR-сессии:", err);
         alert("Ошибка запроса XR-сессии: " + err);
         return;
       }
@@ -148,8 +144,12 @@
       try {
         xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
       } catch (err) {
-        alert("Ошибка запроса reference space: " + err);
-        return;
+        try {
+          xrRefSpace = await xrSession.requestReferenceSpace('viewer');
+        } catch (fallbackErr) {
+          alert("Устройство не поддерживает необходимые reference space типы.");
+          return;
+        }
       }
 
       let viewerSpace;
