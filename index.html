@@ -44,7 +44,6 @@
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
     let viewer;
-    let xrSession, xrRefSpace, xrHitTestSource, renderer, scene, camera, cube;
 
     function validateInputs() {
       const token = document.getElementById('accessToken').value.trim();
@@ -91,40 +90,56 @@
       await loadScene(token, assetId);
     };
 
-    async function startAR() {
+    document.getElementById('enterAR').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Сначала введите Access Token и Asset ID.");
+        return;
+      }
+
+      if (!('xr' in navigator)) {
+        alert("WebXR не поддерживается вашим браузером.");
+        return;
+      }
+
       try {
-        xrSession = await navigator.xr.requestSession('immersive-ar', {
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!supported) {
+          alert("WebXR AR не поддерживается на этом устройстве.");
+          return;
+        }
+
+        const session = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test'],
           optionalFeatures: ['dom-overlay', 'camera-access', 'local-floor', 'local', 'viewer'],
           domOverlay: { root: document.body }
         });
-        console.log("XRSession создан успешно");
 
         const canvas = document.createElement('canvas');
         canvas.className = 'xr-canvas';
-        canvas.style.display = 'block';
         document.body.appendChild(canvas);
 
-        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
-        renderer.autoClear = true;
+        const renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
         renderer.xr.enabled = true;
-        await renderer.xr.setSession(xrSession);
+        await renderer.xr.setSession(session);
 
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera();
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera();
         scene.add(camera);
 
         const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         const material = new THREE.MeshNormalMaterial();
-        cube = new THREE.Mesh(geometry, material);
+        const cube = new THREE.Mesh(geometry, material);
         cube.visible = false;
         scene.add(cube);
 
+        let xrRefSpace;
         const referenceTypes = ['local-floor', 'local', 'viewer'];
         for (const type of referenceTypes) {
           try {
-            xrRefSpace = await xrSession.requestReferenceSpace(type);
-            console.log(`Используется reference space: ${type}`);
+            xrRefSpace = await session.requestReferenceSpace(type);
             break;
           } catch (e) {
             console.warn(`Reference space ${type} не поддерживается.`);
@@ -136,8 +151,8 @@
           return;
         }
 
-        const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-        xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        const xrHitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
         const onXRFrame = (time, frame) => {
           const session = frame.session;
@@ -154,38 +169,12 @@
           session.requestAnimationFrame(onXRFrame);
         };
 
-        xrSession.requestAnimationFrame(onXRFrame);
+        session.requestAnimationFrame(onXRFrame);
+
+        alert("WebXR AR-сессия успешно запущена!");
       } catch (err) {
         alert("Ошибка запуска AR: " + err);
       }
-    }
-
-    document.getElementById('enterAR').onclick = function () {
-      const token = document.getElementById('accessToken').value.trim();
-      const assetId = document.getElementById('assetId').value.trim();
-
-      if (!token || !assetId) {
-        alert("Сначала введите Access Token и Asset ID.");
-        return;
-      }
-
-      if (!('xr' in navigator)) {
-        alert("WebXR не поддерживается вашим браузером.");
-        return;
-      }
-
-      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-        if (!supported) {
-          alert("WebXR AR не поддерживается на этом устройстве.");
-          return;
-        }
-
-        startAR().then(() => {
-          alert("WebXR AR-сессия успешно запущена!");
-        }).catch(err => {
-          alert("Ошибка запуска AR-сессии: " + err);
-        });
-      });
     };
 
     window.onload = async () => {
