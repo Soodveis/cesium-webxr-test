@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Cesium + WebXR Viewer</title>
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/CesiumUnminified/Cesium.js"></script>
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/CesiumUnminified/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <style>
     html, body, #cesiumContainer {
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
@@ -48,17 +48,17 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: Cesium.createWorldTerrain(),
         imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+        baseLayerPicker: true,
+        terrainProvider: Cesium.Terrain.fromWorldTerrain(),
         shouldAnimate: true
       });
 
       try {
-        const kmlDataSource = await Cesium.KmlDataSource.load(
-          await Cesium.IonResource.fromAssetId(Number(assetId))
-        );
-        viewer.dataSources.add(kmlDataSource);
-        viewer.flyTo(kmlDataSource);
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const dataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(dataSource);
+        viewer.flyTo(dataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
