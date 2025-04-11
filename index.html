@@ -110,9 +110,7 @@
       }
 
       xrSession = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test', 'local-floor'],
-        optionalFeatures: ['dom-overlay'],
-        domOverlay: { root: document.body }
+        requiredFeatures: ['hit-test', 'local-floor']
       });
 
       const canvas = document.createElement('canvas');
