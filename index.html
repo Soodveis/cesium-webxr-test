@@ -106,6 +106,7 @@
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
+          optionalFeatures: ['local-floor', 'bounded-floor', 'viewer'],
           domOverlay: { root: document.body }
         });
       } catch (err) {
@@ -132,19 +133,18 @@
       cube.visible = false;
       scene.add(cube);
 
-      try {
-        xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
-      } catch (e1) {
+      let referenceTypes = ['local-floor', 'local', 'viewer'];
+      for (let type of referenceTypes) {
         try {
-          xrRefSpace = await xrSession.requestReferenceSpace('local');
-        } catch (e2) {
-          try {
-            xrRefSpace = await xrSession.requestReferenceSpace('viewer');
-          } catch (e3) {
-            alert("Ваше устройство не поддерживает типы reference space 'local-floor', 'local', или 'viewer'.");
-            return;
-          }
+          xrRefSpace = await xrSession.requestReferenceSpace(type);
+          break;
+        } catch (e) {
+          console.warn(`Reference space ${type} not supported.`);
         }
+      }
+      if (!xrRefSpace) {
+        alert("Ваше устройство не поддерживает доступные типы reference space.");
+        return;
       }
 
       let viewerSpace;
