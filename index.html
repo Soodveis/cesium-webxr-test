@@ -55,25 +55,16 @@
     document.getElementById('accessToken').addEventListener('input', validateInputs);
     document.getElementById('assetId').addEventListener('input', validateInputs);
 
-    async function loadSceneFromStorage() {
-      const token = localStorage.getItem('cesiumToken');
-      const assetId = localStorage.getItem('cesiumAssetId');
-      if (token && assetId) {
-        document.getElementById('accessToken').value = token;
-        document.getElementById('assetId').value = assetId;
-        validateInputs();
-        await loadScene(token, assetId);
-      }
-    }
-
     async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
-      viewer = new Cesium.Viewer('cesiumContainer', {
-        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-        baseLayerPicker: true,
-        shouldAnimate: true
-      });
-
+      if (!viewer) {
+        viewer = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+          baseLayerPicker: true,
+          shouldAnimate: true
+        });
+      }
+      viewer.dataSources.removeAll();
       try {
         const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
         const kmlDataSource = await Cesium.KmlDataSource.load(resource);
@@ -106,10 +97,15 @@
         return;
       }
 
+      const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!isSupported) {
+        alert("Ваше устройство не поддерживает AR-сессии WebXR.");
+        return;
+      }
+
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
-          optionalFeatures: ['local-floor', 'bounded-floor', 'viewer'],
           domOverlay: { root: document.body }
         });
       } catch (err) {
@@ -136,18 +132,19 @@
       cube.visible = false;
       scene.add(cube);
 
-      let refSpaceTypes = ['local-floor', 'local', 'viewer'];
-      for (let type of refSpaceTypes) {
+      try {
+        xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
+      } catch (e1) {
         try {
-          xrRefSpace = await xrSession.requestReferenceSpace(type);
-          break;
-        } catch (e) {
-          console.warn(`Не удалось получить reference space '${type}':`, e);
+          xrRefSpace = await xrSession.requestReferenceSpace('local');
+        } catch (e2) {
+          try {
+            xrRefSpace = await xrSession.requestReferenceSpace('viewer');
+          } catch (e3) {
+            alert("Ваше устройство не поддерживает типы reference space 'local-floor', 'local', или 'viewer'.");
+            return;
+          }
         }
-      }
-      if (!xrRefSpace) {
-        alert("Ваше устройство не поддерживает необходимые reference space типы.");
-        return;
       }
 
       let viewerSpace;
@@ -177,7 +174,7 @@
       xrSession.requestAnimationFrame(onXRFrame);
     }
 
-    document.getElementById('enterAR').onclick = async function () {
+    document.getElementById('enterAR').onclick = function () {
       const token = document.getElementById('accessToken').value.trim();
       const assetId = document.getElementById('assetId').value.trim();
 
@@ -186,20 +183,35 @@
         return;
       }
 
-      try {
-        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!('xr' in navigator)) {
+        alert("WebXR не поддерживается вашим браузером.");
+        return;
+      }
+
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
         if (!supported) {
           alert("WebXR AR не поддерживается на этом устройстве.");
           return;
         }
-        await startAR();
-        alert("WebXR AR-сессия успешно запущена!");
-      } catch (err) {
-        alert("Ошибка запуска AR-сессии: " + err);
-      }
+
+        startAR().then(() => {
+          alert("WebXR AR-сессия успешно запущена!");
+        }).catch(err => {
+          alert("Ошибка запуска AR-сессии: " + err);
+        });
+      });
     };
 
-    window.onload = loadSceneFromStorage;
+    window.onload = async () => {
+      const token = localStorage.getItem('cesiumToken');
+      const assetId = localStorage.getItem('cesiumAssetId');
+      if (token && assetId) {
+        document.getElementById('accessToken').value = token;
+        document.getElementById('assetId').value = assetId;
+        validateInputs();
+        await loadScene(token, assetId);
+      }
+    };
   </script>
 </body>
 </html>
