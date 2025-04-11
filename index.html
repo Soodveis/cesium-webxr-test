@@ -48,18 +48,14 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: await Cesium.IonResource.fromAssetId(1)
-          .then(resource => new Cesium.CesiumTerrainProvider({ url: resource })),
-        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
         shouldAnimate: true
       });
 
       try {
-        const kmlDataSource = await Cesium.KmlDataSource.load(
-          Cesium.IonResource.fromAssetId(Number(assetId))
-        );
-        viewer.dataSources.add(kmlDataSource);
-        viewer.flyTo(kmlDataSource);
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const dataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(dataSource);
+        viewer.flyTo(dataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
