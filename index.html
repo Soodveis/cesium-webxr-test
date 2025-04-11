@@ -146,7 +146,7 @@
       scene.add(cube);
 
       try {
-        xrRefSpace = await xrSession.requestReferenceSpace('viewer');
+        xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
       } catch (err) {
         alert("Ошибка запроса reference space: " + err);
         return;
