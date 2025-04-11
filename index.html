@@ -46,15 +46,19 @@
     document.getElementById('accessToken').addEventListener('input', validateInputs);
     document.getElementById('assetId').addEventListener('input', validateInputs);
 
-    document.getElementById('loadScene').onclick = async function () {
-      const token = document.getElementById('accessToken').value.trim();
-      const assetId = document.getElementById('assetId').value.trim();
+    async function loadSceneFromStorage() {
+      const token = localStorage.getItem('cesiumToken');
+      const assetId = localStorage.getItem('cesiumAssetId');
 
-      if (!token || !assetId) {
-        alert("Пожалуйста, введите Access Token и Asset ID");
-        return;
+      if (token && assetId) {
+        document.getElementById('accessToken').value = token;
+        document.getElementById('assetId').value = assetId;
+        validateInputs();
+        await loadScene(token, assetId);
       }
+    }
 
+    async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
@@ -64,15 +68,29 @@
       });
 
       try {
-        const kmlDataSource = await Cesium.KmlDataSource.load(
-          Cesium.IonResource.fromAssetId(Number(assetId))
-        );
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
         viewer.dataSources.add(kmlDataSource);
         viewer.flyTo(kmlDataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
       }
+    }
+
+    document.getElementById('loadScene').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Пожалуйста, введите Access Token и Asset ID");
+        return;
+      }
+
+      localStorage.setItem('cesiumToken', token);
+      localStorage.setItem('cesiumAssetId', assetId);
+
+      await loadScene(token, assetId);
     };
 
     document.getElementById('enterAR').onclick = function () {
@@ -92,6 +110,8 @@
         alert("Ваш браузер не поддерживает WebXR.");
       }
     };
+
+    window.onload = loadSceneFromStorage;
   </script>
 </body>
 </html>
