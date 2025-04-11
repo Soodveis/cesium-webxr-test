@@ -109,10 +109,16 @@
         return;
       }
 
-      xrSession = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test', 'dom-overlay'],
-        domOverlay: { root: document.body }
-      });
+      try {
+        xrSession = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test', 'dom-overlay'],
+          domOverlay: { root: document.body }
+        });
+      } catch (err) {
+        console.error("Ошибка при запросе XR-сессии:", err);
+        alert("Ошибка запроса XR-сессии: " + err);
+        return;
+      }
 
       const canvas = document.createElement('canvas');
       canvas.className = 'xr-canvas';
@@ -133,9 +139,26 @@
       cube.visible = false;
       scene.add(cube);
 
-      xrRefSpace = await xrSession.requestReferenceSpace('local');
-      const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-      xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+      try {
+        xrRefSpace = await xrSession.requestReferenceSpace('local');
+      } catch (err) {
+        console.warn("Не удалось запросить reference space 'local'. Пробуем 'viewer'.", err);
+        try {
+          xrRefSpace = await xrSession.requestReferenceSpace('viewer');
+        } catch (err2) {
+          alert("Ошибка запроса reference space: " + err2);
+          return;
+        }
+      }
+
+      let viewerSpace;
+      try {
+        viewerSpace = await xrSession.requestReferenceSpace('viewer');
+        xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+      } catch (err) {
+        alert("Ошибка инициализации hit-test: " + err);
+        return;
+      }
 
       const onXRFrame = (time, frame) => {
         const session = frame.session;
