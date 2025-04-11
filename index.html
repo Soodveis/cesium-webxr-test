@@ -110,7 +110,8 @@
       }
 
       xrSession = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test', 'local-floor']
+        requiredFeatures: ['hit-test', 'dom-overlay'],
+        domOverlay: { root: document.body }
       });
 
       const canvas = document.createElement('canvas');
@@ -132,7 +133,7 @@
       cube.visible = false;
       scene.add(cube);
 
-      xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
+      xrRefSpace = await xrSession.requestReferenceSpace('local');
       const viewerSpace = await xrSession.requestReferenceSpace('viewer');
       xrHitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
 
