@@ -106,7 +106,7 @@
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
-          optionalFeatures: ['local-floor', 'bounded-floor', 'viewer'],
+          optionalFeatures: ['local-floor', 'local', 'viewer'],
           domOverlay: { root: document.body }
         });
       } catch (err) {
@@ -137,6 +137,7 @@
       for (let type of referenceTypes) {
         try {
           xrRefSpace = await xrSession.requestReferenceSpace(type);
+          console.log(`Используется reference space: ${type}`);
           break;
         } catch (e) {
           console.warn(`Reference space ${type} not supported.`);
@@ -166,6 +167,8 @@
             cube.visible = true;
             cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
           }
+        } else {
+          console.warn("Не удалось получить pose.");
         }
         renderer.render(scene, camera);
         session.requestAnimationFrame(onXRFrame);
