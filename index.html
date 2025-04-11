@@ -105,10 +105,10 @@
 
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
-          optionalFeatures: ['local-floor', 'local', 'viewer'],
-          domOverlay: { root: document.body }
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['local-floor', 'local', 'viewer']
         });
+        console.log("XRSession создан успешно");
       } catch (err) {
         alert("Ошибка запроса XR-сессии: " + err);
         return;
@@ -116,12 +116,21 @@
 
       const canvas = document.createElement('canvas');
       canvas.className = 'xr-canvas';
+      canvas.style.display = 'block';
       document.body.appendChild(canvas);
+      console.log("XR canvas добавлен в DOM");
 
       renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
       renderer.autoClear = true;
       renderer.xr.enabled = true;
-      await renderer.xr.setSession(xrSession);
+
+      try {
+        await renderer.xr.setSession(xrSession);
+        console.log("XR-сессия привязана к рендереру");
+      } catch (err) {
+        alert("Ошибка установки XR-сессии: " + err);
+        return;
+      }
 
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera();
