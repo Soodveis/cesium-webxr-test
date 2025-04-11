@@ -112,8 +112,8 @@
         }
 
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['dom-overlay', 'camera-access', 'local-floor', 'local', 'viewer'],
+          requiredFeatures: ['hit-test', 'dom-overlay'],
+          optionalFeatures: ['camera-access', 'local-floor', 'local', 'viewer'],
           domOverlay: { root: document.body }
         });
 
@@ -123,6 +123,7 @@
 
         const renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
         renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local');
         await renderer.xr.setSession(session);
 
         const scene = new THREE.Scene();
@@ -135,32 +136,17 @@
         cube.visible = false;
         scene.add(cube);
 
-        let xrRefSpace;
-        const referenceTypes = ['local-floor', 'local', 'viewer'];
-        for (const type of referenceTypes) {
-          try {
-            xrRefSpace = await session.requestReferenceSpace(type);
-            break;
-          } catch (e) {
-            console.warn(`Reference space ${type} не поддерживается.`);
-          }
-        }
-
-        if (!xrRefSpace) {
-          alert("Ваше устройство не поддерживает доступные типы reference space.");
-          return;
-        }
-
+        const refSpace = await session.requestReferenceSpace('local');
         const viewerSpace = await session.requestReferenceSpace('viewer');
-        const xrHitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+        const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
         const onXRFrame = (time, frame) => {
           const session = frame.session;
-          const pose = frame.getViewerPose(xrRefSpace);
+          const pose = frame.getViewerPose(refSpace);
           if (pose) {
-            const hits = frame.getHitTestResults(xrHitTestSource);
+            const hits = frame.getHitTestResults(hitTestSource);
             if (hits.length > 0) {
-              const hitPose = hits[0].getPose(xrRefSpace);
+              const hitPose = hits[0].getPose(refSpace);
               cube.visible = true;
               cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
             }
@@ -171,9 +157,9 @@
 
         session.requestAnimationFrame(onXRFrame);
 
-        alert("WebXR AR-сессия успешно запущена!");
       } catch (err) {
         alert("Ошибка запуска AR: " + err);
+        console.error(err);
       }
     };
 
