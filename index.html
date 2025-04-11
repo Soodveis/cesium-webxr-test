@@ -23,7 +23,7 @@
 </head>
 <body>
   <div id="cesiumContainer"></div>
-  <button id="enterAR">Войти в AR</button>
+  <button id="enterAR" disabled>Войти в AR</button>
   <div id="tokenForm">
     <div>
       Access Token: <input id="accessToken" placeholder="Вставьте Access Token">
@@ -35,6 +35,16 @@
   </div>
   <script>
     let viewer;
+
+    function validateInputs() {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+      const enterARButton = document.getElementById('enterAR');
+      enterARButton.disabled = !(token && assetId);
+    }
+
+    document.getElementById('accessToken').addEventListener('input', validateInputs);
+    document.getElementById('assetId').addEventListener('input', validateInputs);
 
     document.getElementById('loadScene').onclick = async function () {
       const token = document.getElementById('accessToken').value.trim();
@@ -48,14 +58,17 @@
       Cesium.Ion.defaultAccessToken = token;
 
       viewer = new Cesium.Viewer('cesiumContainer', {
+        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+        baseLayerPicker: true,
         shouldAnimate: true
       });
 
       try {
-        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
-        const dataSource = await Cesium.KmlDataSource.load(resource);
-        viewer.dataSources.add(dataSource);
-        viewer.flyTo(dataSource);
+        const kmlDataSource = await Cesium.KmlDataSource.load(
+          Cesium.IonResource.fromAssetId(Number(assetId))
+        );
+        viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(kmlDataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
@@ -63,6 +76,14 @@
     };
 
     document.getElementById('enterAR').onclick = function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Сначала введите Access Token и Asset ID.");
+        return;
+      }
+
       if (navigator.xr) {
         navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'] })
           .then(() => alert("WebXR AR-сессия успешно запущена!"))
