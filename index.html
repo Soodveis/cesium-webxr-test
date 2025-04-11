@@ -109,6 +109,12 @@
         return;
       }
 
+      const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!isSupported) {
+        alert("Ваше устройство не поддерживает AR-сессии WebXR.");
+        return;
+      }
+
       try {
         xrSession = await navigator.xr.requestSession('immersive-ar', {
           requiredFeatures: ['hit-test', 'dom-overlay'],
@@ -187,10 +193,22 @@
         return;
       }
 
-      startAR().then(() => {
-        alert("WebXR AR-сессия успешно запущена!");
-      }).catch(err => {
-        alert("Ошибка запуска AR-сессии: " + err);
+      if (!('xr' in navigator)) {
+        alert("WebXR не поддерживается вашим браузером.");
+        return;
+      }
+
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        if (!supported) {
+          alert("WebXR AR не поддерживается на этом устройстве.");
+          return;
+        }
+
+        startAR().then(() => {
+          alert("WebXR AR-сессия успешно запущена!");
+        }).catch(err => {
+          alert("Ошибка запуска AR-сессии: " + err);
+        });
       });
     };
 
