@@ -142,13 +142,17 @@
       scene.add(cube);
 
       try {
-        xrRefSpace = await xrSession.requestReferenceSpace('local');
-      } catch (err) {
+        xrRefSpace = await xrSession.requestReferenceSpace('local-floor');
+      } catch (e1) {
         try {
-          xrRefSpace = await xrSession.requestReferenceSpace('viewer');
-        } catch (fallbackErr) {
-          alert("Устройство не поддерживает необходимые reference space типы.");
-          return;
+          xrRefSpace = await xrSession.requestReferenceSpace('local');
+        } catch (e2) {
+          try {
+            xrRefSpace = await xrSession.requestReferenceSpace('viewer');
+          } catch (e3) {
+            alert("Ваше устройство не поддерживает типы reference space 'local-floor', 'local', или 'viewer'.");
+            return;
+          }
         }
       }
 
@@ -211,3 +215,4 @@
   </script>
 </body>
 </html>
+
