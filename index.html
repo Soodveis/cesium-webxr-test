@@ -67,16 +67,45 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer;
+    let viewer, cesiumEntity = null;
     let rtkStream = null;
     let rtkPosition = null;
-    let cesiumEntity = null;
+
+    function initializeViewer() {
+      viewer = new Cesium.Viewer('cesiumContainer', {
+        terrainProvider: Cesium.createWorldTerrain(),
+        shouldAnimate: true,
+      });
+    }
+
+    function saveCredentials() {
+      localStorage.setItem('accessToken', document.getElementById('accessToken').value);
+      localStorage.setItem('assetId', document.getElementById('assetId').value);
+    }
+
+    function loadCredentials() {
+      const token = localStorage.getItem('accessToken');
+      const id = localStorage.getItem('assetId');
+      if (token) document.getElementById('accessToken').value = token;
+      if (id) document.getElementById('assetId').value = id;
+    }
+
+    async function loadScene() {
+      const token = document.getElementById('accessToken').value;
+      const assetId = document.getElementById('assetId').value;
+      if (!token || !assetId) return alert("Введите Access Token и Asset ID");
+      saveCredentials();
+      Cesium.Ion.defaultAccessToken = token;
+      viewer.scene.primitives.removeAll();
+      const resource = await Cesium.IonResource.fromAssetId(parseInt(assetId));
+      viewer.scene.primitives.add(await Cesium.Cesium3DTileset.fromIonAssetId(parseInt(assetId)));
+    }
 
     async function connectRTK() {
       try {
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: "RTK" }],
-          optionalServices: ["00001101-0000-1000-8000-00805f9b34fb"] // Serial port UUID
+          optionalServices: ["00001101-0000-1000-8000-00805f9b34fb"]
         });
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService("00001101-0000-1000-8000-00805f9b34fb");
@@ -146,6 +175,10 @@
     }
 
     document.getElementById('connectRTK').onclick = connectRTK;
+    document.getElementById('loadScene').onclick = loadScene;
+
+    loadCredentials();
+    initializeViewer();
   </script>
 </body>
 </html>
