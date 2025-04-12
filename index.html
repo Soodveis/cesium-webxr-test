@@ -66,8 +66,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, entity;
-    let gpsEntity = null;
+    let viewer, entity, gpsEntity = null, xrSession = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -96,12 +95,10 @@
           shadows: true,
           useDefaultRenderLoop: true,
         });
-        viewer.scene.globe.depthTestAgainstTerrain = false;
+        viewer.scene.globe.depthTestAgainstTerrain = true;
       }
 
-      viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromUrl(
-        Cesium.IonResource.fromAssetId(1)
-      );
+      viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
       viewer.dataSources.removeAll();
       try {
@@ -109,7 +106,7 @@
         const kmlDataSource = await Cesium.KmlDataSource.load(resource, {
           camera: viewer.scene.camera,
           canvas: viewer.scene.canvas,
-          clampToGround: false
+          clampToGround: true
         });
         const dataSource = await viewer.dataSources.add(kmlDataSource);
         viewer.flyTo(dataSource);
@@ -119,7 +116,7 @@
       }
     }
 
-    document.getElementById('loadScene').onclick = async function () {
+    document.getElementById('loadScene').onclick = async () => {
       const token = document.getElementById('accessToken').value.trim();
       const assetId = document.getElementById('assetId').value.trim();
       if (!token || !assetId) {
@@ -131,26 +128,34 @@
       await loadScene(token, assetId);
     };
 
-    document.getElementById('connectRTK').onclick = async function () {
+    document.getElementById('connectRTK').onclick = async () => {
       try {
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: "RTK" }],
           optionalServices: ["battery_service"]
         });
         showMessage("Подключено к RTK-модулю: " + device.name);
-        setInterval(() => {
-          const position = Cesium.Cartesian3.fromDegrees(30.31, 59.94);
-          if (!gpsEntity) {
-            gpsEntity = viewer.entities.add({
-              position, point: { pixelSize: 10, color: Cesium.Color.RED }, label: { text: "Вы здесь", font: '16px sans-serif' }
-            });
-          } else {
-            gpsEntity.position = position;
-          }
-        }, 3000);
       } catch (err) {
         showMessage("Ошибка Bluetooth: " + err);
       }
+    };
+
+    document.getElementById('enterAR').onclick = async () => {
+      if (!navigator.xr) return showMessage("WebXR не поддерживается");
+      xrSession = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test', 'dom-overlay'], domOverlay: { root: document.body } });
+      document.getElementById('enterAR').style.display = 'none';
+      document.getElementById('exitAR').style.display = 'block';
+      showMessage("AR режим активирован");
+    };
+
+    document.getElementById('exitAR').onclick = async () => {
+      if (xrSession) {
+        await xrSession.end();
+        xrSession = null;
+        showMessage("AR режим завершен");
+      }
+      document.getElementById('enterAR').style.display = 'block';
+      document.getElementById('exitAR').style.display = 'none';
     };
 
     window.onload = async () => {
