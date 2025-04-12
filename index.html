@@ -88,7 +88,9 @@
           imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
           baseLayerPicker: true,
           shouldAnimate: true,
-          useDefaultRenderLoop: false
+          scene3DOnly: true,
+          shadows: true,
+          useDefaultRenderLoop: true,
         });
       }
       viewer.dataSources.removeAll();
@@ -156,13 +158,14 @@
         document.body.appendChild(canvas);
 
         const gl = canvas.getContext('webgl2', { xrCompatible: true }) || canvas.getContext('webgl', { xrCompatible: true });
+
+        if (!gl) {
+          alert("Не удалось инициализировать WebGL контекст.");
+          return;
+        }
+
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        viewer.scene.context._gl = gl;
-        viewer.scene.context._originalRequestAnimationFrame = window.requestAnimationFrame;
-        window.requestAnimationFrame = viewer.scene.requestRender.bind(viewer.scene);
-
-        session.requestAnimationFrame(() => viewer.render());
         session.addEventListener('end', () => {
           currentSession = null;
           if (canvas && canvas.parentNode) canvas.remove();
@@ -170,11 +173,13 @@
           document.getElementById('enterAR').style.display = 'block';
           document.getElementById('tokenForm').style.display = 'block';
           document.getElementById('cesiumContainer').style.display = 'block';
-
-          if (viewer && viewer.scene) {
-            viewer.scene.requestRender();
-          }
         });
+
+        function onXRFrame(time, frame) {
+          session.requestAnimationFrame(onXRFrame);
+        }
+
+        session.requestAnimationFrame(onXRFrame);
 
       } catch (err) {
         alert("Ошибка запуска AR: " + err);
