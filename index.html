@@ -128,6 +128,8 @@
       }
 
       try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+
         const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!supported) {
           alert("WebXR AR не поддерживается на этом устройстве.");
@@ -146,7 +148,6 @@
         });
 
         currentSession = session;
-        showMessage("WebXR AR-сессия успешно запущена!");
 
         canvas = document.createElement('canvas');
         canvas.className = 'xr-canvas';
