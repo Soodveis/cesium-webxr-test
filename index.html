@@ -22,9 +22,6 @@
       top: 60px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 6px;
     }
     #tokenForm input { width: 250px; margin-bottom: 5px; }
-    #gpsStatus {
-      bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px; border-radius: 6px;
-    }
     canvas.xr-canvas {
       position: absolute;
       top: 0;
@@ -45,6 +42,9 @@
       z-index: 1100;
       display: none;
     }
+    #gpsStatus {
+      bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px; border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -61,47 +61,74 @@
     <button id="loadScene">Загрузить сцену</button>
     <button id="connectRTK">Подключиться к RTK (Bluetooth)</button>
   </div>
-  <div id="gpsStatus">Ожидание GPS...</div>
   <div id="messageBox"></div>
-
+  <div id="gpsStatus">Ожидание GPS...</div>
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, cesiumEntity = null;
-    let rtkStream = null;
+    let viewer;
+    let currentSession = null;
+    let renderer, canvas, scene, camera, cube;
+    let refSpace = null;
     let rtkPosition = null;
+    let cesiumEntity = null;
 
-    function initializeViewer() {
-      viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: Cesium.createWorldTerrain(),
-        shouldAnimate: true,
-      });
+    function showMessage(message) {
+      const box = document.getElementById('messageBox');
+      box.textContent = message;
+      box.style.display = 'block';
+      setTimeout(() => box.style.display = 'none', 3000);
     }
 
-    function saveCredentials() {
-      localStorage.setItem('accessToken', document.getElementById('accessToken').value);
-      localStorage.setItem('assetId', document.getElementById('assetId').value);
+    function validateInputs() {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+      document.getElementById('enterAR').disabled = !(token && assetId);
     }
 
-    function loadCredentials() {
-      const token = localStorage.getItem('accessToken');
-      const id = localStorage.getItem('assetId');
-      if (token) document.getElementById('accessToken').value = token;
-      if (id) document.getElementById('assetId').value = id;
-    }
+    document.getElementById('accessToken').addEventListener('input', validateInputs);
+    document.getElementById('assetId').addEventListener('input', validateInputs);
 
-    async function loadScene() {
-      const token = document.getElementById('accessToken').value;
-      const assetId = document.getElementById('assetId').value;
-      if (!token || !assetId) return alert("Введите Access Token и Asset ID");
-      saveCredentials();
+    async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
-      viewer.scene.primitives.removeAll();
-      const resource = await Cesium.IonResource.fromAssetId(parseInt(assetId));
-      viewer.scene.primitives.add(await Cesium.Cesium3DTileset.fromIonAssetId(parseInt(assetId)));
+      if (!viewer) {
+        viewer = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+          baseLayerPicker: true,
+          shouldAnimate: true,
+          scene3DOnly: true,
+          shadows: true,
+          useDefaultRenderLoop: true,
+        });
+      }
+      viewer.dataSources.removeAll();
+      try {
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(kmlDataSource);
+      } catch (error) {
+        console.error("Ошибка загрузки KML:", error);
+        alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
+      }
     }
 
-    async function connectRTK() {
+    document.getElementById('loadScene').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Пожалуйста, введите Access Token и Asset ID");
+        return;
+      }
+
+      localStorage.setItem('cesiumToken', token);
+      localStorage.setItem('cesiumAssetId', assetId);
+
+      await loadScene(token, assetId);
+    };
+
+    document.getElementById('connectRTK').onclick = async function () {
       try {
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ namePrefix: "RTK" }],
@@ -123,7 +150,7 @@
         document.getElementById('gpsStatus').textContent = "Ошибка подключения к RTK. Используется встроенный GPS.";
         fallbackToGeolocation();
       }
-    }
+    };
 
     function parseNMEA(data) {
       const lines = data.split("\n");
@@ -174,11 +201,16 @@
       }, { enableHighAccuracy: true });
     }
 
-    document.getElementById('connectRTK').onclick = connectRTK;
-    document.getElementById('loadScene').onclick = loadScene;
-
-    loadCredentials();
-    initializeViewer();
+    window.onload = async () => {
+      const token = localStorage.getItem('cesiumToken');
+      const assetId = localStorage.getItem('cesiumAssetId');
+      if (token && assetId) {
+        document.getElementById('accessToken').value = token;
+        document.getElementById('assetId').value = assetId;
+        validateInputs();
+        await loadScene(token, assetId);
+      }
+    };
   </script>
 </body>
 </html>
