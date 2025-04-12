@@ -155,7 +155,7 @@
         canvas.className = 'xr-canvas';
         document.body.appendChild(canvas);
 
-        const gl = canvas.getContext('webgl', { xrCompatible: true });
+        const gl = canvas.getContext('webgl2', { xrCompatible: true }) || canvas.getContext('webgl', { xrCompatible: true });
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
         viewer.scene.context._gl = gl;
