@@ -9,7 +9,7 @@
     html, body, #cesiumContainer {
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
     }
-    #enterAR, #exitAR, #tokenForm {
+    #enterAR, #exitAR, #tokenForm, #gpsStatus {
       position: absolute; z-index: 1000; font-size: 16px;
     }
     #enterAR {
@@ -22,6 +22,9 @@
       top: 60px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 6px;
     }
     #tokenForm input { width: 250px; margin-bottom: 5px; }
+    #gpsStatus {
+      bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px; border-radius: 6px;
+    }
     canvas.xr-canvas {
       position: absolute;
       top: 0;
@@ -56,187 +59,93 @@
       Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
     </div>
     <button id="loadScene">Загрузить сцену</button>
+    <button id="connectRTK">Подключиться к RTK (Bluetooth)</button>
   </div>
+  <div id="gpsStatus">Ожидание GPS...</div>
   <div id="messageBox"></div>
+
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
     let viewer;
-    let currentSession = null;
-    let renderer, canvas, scene, camera, cube;
-    let refSpace = null;
+    let rtkStream = null;
+    let rtkPosition = null;
+    let cesiumEntity = null;
 
-    function showMessage(message) {
-      const box = document.getElementById('messageBox');
-      box.textContent = message;
-      box.style.display = 'block';
-      setTimeout(() => box.style.display = 'none', 3000);
-    }
-
-    function validateInputs() {
-      const token = document.getElementById('accessToken').value.trim();
-      const assetId = document.getElementById('assetId').value.trim();
-      document.getElementById('enterAR').disabled = !(token && assetId);
-    }
-
-    document.getElementById('accessToken').addEventListener('input', validateInputs);
-    document.getElementById('assetId').addEventListener('input', validateInputs);
-
-    async function loadScene(token, assetId) {
-      Cesium.Ion.defaultAccessToken = token;
-      if (!viewer) {
-        viewer = new Cesium.Viewer('cesiumContainer', {
-          imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-          baseLayerPicker: true,
-          shouldAnimate: true,
-          scene3DOnly: true,
-          shadows: true,
-          useDefaultRenderLoop: true,
+    async function connectRTK() {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: "RTK" }],
+          optionalServices: ["00001101-0000-1000-8000-00805f9b34fb"] // Serial port UUID
         });
-      }
-      viewer.dataSources.removeAll();
-      try {
-        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
-        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
-        viewer.dataSources.add(kmlDataSource);
-        viewer.flyTo(kmlDataSource);
-      } catch (error) {
-        console.error("Ошибка загрузки KML:", error);
-        alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
-      }
-    }
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService("00001101-0000-1000-8000-00805f9b34fb");
+        const characteristic = await service.getCharacteristic("00002a00-0000-1000-8000-00805f9b34fb");
 
-    document.getElementById('loadScene').onclick = async function () {
-      const token = document.getElementById('accessToken').value.trim();
-      const assetId = document.getElementById('assetId').value.trim();
-
-      if (!token || !assetId) {
-        alert("Пожалуйста, введите Access Token и Asset ID");
-        return;
-      }
-
-      localStorage.setItem('cesiumToken', token);
-      localStorage.setItem('cesiumAssetId', assetId);
-
-      await loadScene(token, assetId);
-    };
-
-    document.getElementById('enterAR').onclick = async function () {
-      const token = document.getElementById('accessToken').value.trim();
-      const assetId = document.getElementById('assetId').value.trim();
-
-      if (!token || !assetId) {
-        alert("Сначала введите Access Token и Asset ID.");
-        return;
-      }
-
-      if (!('xr' in navigator)) {
-        alert("WebXR не поддерживается вашим браузером.");
-        return;
-      }
-
-      try {
-        const supported = await navigator.xr.isSessionSupported('immersive-ar');
-        if (!supported) {
-          alert("WebXR AR не поддерживается на этом устройстве.");
-          return;
-        }
-
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
-          optionalFeatures: ['local-floor', 'local', 'viewer'],
-          domOverlay: { root: document.body }
+        characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', event => {
+          const data = new TextDecoder().decode(event.target.value);
+          parseNMEA(data);
         });
 
-        currentSession = session;
-        document.getElementById('exitAR').style.display = 'block';
-        document.getElementById('tokenForm').style.display = 'none';
-        document.getElementById('enterAR').style.display = 'none';
-        document.getElementById('cesiumContainer').style.display = 'none';
+        document.getElementById('gpsStatus').textContent = "RTK GPS подключён (Bluetooth)";
+      } catch (err) {
+        console.error("Ошибка подключения к RTK:", err);
+        document.getElementById('gpsStatus').textContent = "Ошибка подключения к RTK. Используется встроенный GPS.";
+        fallbackToGeolocation();
+      }
+    }
 
-        canvas = document.createElement('canvas');
-        canvas.className = 'xr-canvas';
-        document.body.appendChild(canvas);
-
-        const gl = canvas.getContext('webgl2', { xrCompatible: true }) || canvas.getContext('webgl', { xrCompatible: true });
-
-        if (!gl) {
-          alert("Не удалось инициализировать WebGL контекст.");
-          return;
-        }
-
-        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-
-        refSpace = await session.requestReferenceSpace('local');
-        const viewerSpace = await session.requestReferenceSpace('viewer');
-        const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
-        renderer.autoClear = false;
-        renderer.xr.enabled = true;
-        renderer.xr.setReferenceSpaceType('local');
-        renderer.xr.setSession(session);
-
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera();
-
-        const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true });
-        cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-
-        function onXRFrame(time, frame) {
-          if (!frame || !refSpace || !renderer) return;
-          try {
-            const viewerPose = frame.getViewerPose(refSpace);
-            if (viewerPose) {
-              const hitTestResults = frame.getHitTestResults(hitTestSource);
-              if (hitTestResults.length > 0) {
-                const hit = hitTestResults[0];
-                const hitPose = hit.getPose(refSpace);
-                cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
-              }
-            }
-            renderer.render(scene, camera);
-          } catch (err) {
-            console.warn("onXRFrame error:", err);
+    function parseNMEA(data) {
+      const lines = data.split("\n");
+      for (let line of lines) {
+        if (line.startsWith("$GPGGA")) {
+          const parts = line.split(",");
+          const lat = convertDMSToDD(parts[2], parts[3]);
+          const lon = convertDMSToDD(parts[4], parts[5]);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            rtkPosition = { latitude: lat, longitude: lon };
+            updateCesiumPosition();
           }
         }
+      }
+    }
 
-        renderer.setAnimationLoop(onXRFrame);
+    function convertDMSToDD(dms, direction) {
+      if (!dms || dms.length < 4) return NaN;
+      const degrees = parseInt(dms.substring(0, dms.length - 7));
+      const minutes = parseFloat(dms.substring(dms.length - 7));
+      let dd = degrees + minutes / 60;
+      if (direction === 'S' || direction === 'W') dd *= -1;
+      return dd;
+    }
 
-        session.addEventListener('end', () => {
-          currentSession = null;
-          refSpace = null;
-          if (canvas && canvas.parentNode) canvas.remove();
-          document.getElementById('exitAR').style.display = 'none';
-          document.getElementById('enterAR').style.display = 'block';
-          document.getElementById('tokenForm').style.display = 'block';
-          document.getElementById('cesiumContainer').style.display = 'block';
+    function updateCesiumPosition() {
+      if (!viewer || !rtkPosition) return;
+      if (!cesiumEntity) {
+        cesiumEntity = viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(rtkPosition.longitude, rtkPosition.latitude),
+          point: { pixelSize: 10, color: Cesium.Color.RED, outlineColor: Cesium.Color.WHITE, outlineWidth: 2 },
+          label: { text: "Вы здесь", font: '14px sans-serif', fillColor: Cesium.Color.YELLOW }
         });
-
-      } catch (err) {
-        alert("Ошибка запуска AR: " + err);
-        console.error(err);
+      } else {
+        cesiumEntity.position = Cesium.Cartesian3.fromDegrees(rtkPosition.longitude, rtkPosition.latitude);
       }
-    };
+    }
 
-    document.getElementById('exitAR').onclick = function () {
-      if (currentSession) {
-        currentSession.end();
-      }
-    };
+    function fallbackToGeolocation() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.watchPosition(pos => {
+        rtkPosition = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        updateCesiumPosition();
+        document.getElementById('gpsStatus').textContent = "Используется встроенный GPS";
+      }, err => {
+        console.warn("Ошибка геолокации:", err);
+        document.getElementById('gpsStatus').textContent = "Нет доступа к геолокации";
+      }, { enableHighAccuracy: true });
+    }
 
-    window.onload = async () => {
-      const token = localStorage.getItem('cesiumToken');
-      const assetId = localStorage.getItem('cesiumAssetId');
-      if (token && assetId) {
-        document.getElementById('accessToken').value = token;
-        document.getElementById('assetId').value = assetId;
-        validateInputs();
-        await loadScene(token, assetId);
-      }
-    };
+    document.getElementById('connectRTK').onclick = connectRTK;
   </script>
 </body>
 </html>
