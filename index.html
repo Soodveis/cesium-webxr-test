@@ -175,7 +175,7 @@
         const viewerSpace = await session.requestReferenceSpace('viewer');
         const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
-        const onXRFrame = (time, frame) => {
+        renderer.setAnimationLoop((time, frame) => {
           const pose = frame.getViewerPose(refSpace);
           if (pose) {
             const hits = frame.getHitTestResults(hitTestSource);
@@ -186,10 +186,7 @@
             }
           }
           renderer.render(scene, camera);
-          session.requestAnimationFrame(onXRFrame);
-        };
-
-        session.requestAnimationFrame(onXRFrame);
+        });
 
         session.addEventListener('end', () => {
           currentSession = null;
