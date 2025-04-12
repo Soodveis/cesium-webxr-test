@@ -148,6 +148,7 @@
         document.getElementById('exitAR').style.display = 'block';
         document.getElementById('tokenForm').style.display = 'none';
         document.getElementById('enterAR').style.display = 'none';
+        document.getElementById('cesiumContainer').style.display = 'none';
 
         canvas = document.createElement('canvas');
         canvas.className = 'xr-canvas';
@@ -156,7 +157,9 @@
         const gl = canvas.getContext('webgl', { xrCompatible: true });
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, context: gl, antialias: true });
+        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, context: gl });
+        renderer.autoClear = true;
+        renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true;
         renderer.xr.setReferenceSpaceType('local');
         await renderer.xr.setSession(session);
