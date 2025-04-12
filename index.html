@@ -128,7 +128,13 @@
       }
 
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.createElement('video');
+        video.style.display = 'none';
+        document.body.appendChild(video);
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await video.play();
 
         const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!supported) {
@@ -142,7 +148,7 @@
         }
 
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay', 'camera-access'],
+          requiredFeatures: ['hit-test', 'dom-overlay'],
           optionalFeatures: ['local-floor', 'local', 'viewer'],
           domOverlay: { root: document.body }
         });
