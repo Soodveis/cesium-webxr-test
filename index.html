@@ -152,7 +152,10 @@
         canvas.className = 'xr-canvas';
         document.body.appendChild(canvas);
 
-        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
+        const gl = canvas.getContext('webgl', { xrCompatible: true });
+        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+        renderer = new THREE.WebGLRenderer({ alpha: true, canvas, context: gl, antialias: true });
         renderer.xr.enabled = true;
         renderer.xr.setReferenceSpaceType('local');
         await renderer.xr.setSession(session);
@@ -172,7 +175,6 @@
         const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
         const onXRFrame = (time, frame) => {
-          const session = frame.session;
           const pose = frame.getViewerPose(refSpace);
           if (pose) {
             const hits = frame.getHitTestResults(hitTestSource);
