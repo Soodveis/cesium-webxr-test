@@ -63,7 +63,7 @@
 
     let viewer;
     let currentSession = null;
-    let renderer, canvas, scene, camera;
+    let renderer, canvas, scene, camera, cube;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -166,7 +166,10 @@
 
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        // Setup THREE.js scene
+        const refSpace = await session.requestReferenceSpace('local');
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
         renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
         renderer.autoClear = false;
         renderer.xr.enabled = true;
@@ -178,11 +181,19 @@
 
         const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.set(0, 0, -1); // 1 метр перед камерой
+        cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
 
         function onXRFrame(time, frame) {
+          const pose = frame.getViewerPose(refSpace);
+          if (pose) {
+            const hitTestResults = frame.getHitTestResults(hitTestSource);
+            if (hitTestResults.length > 0) {
+              const hit = hitTestResults[0];
+              const pose = hit.getPose(refSpace);
+              cube.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+            }
+          }
           renderer.render(scene, camera);
         }
 
