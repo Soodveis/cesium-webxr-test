@@ -176,13 +176,18 @@
         const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
         renderer.setAnimationLoop((time, frame) => {
+          if (!frame) return;
           const pose = frame.getViewerPose(refSpace);
           if (pose) {
             const hits = frame.getHitTestResults(hitTestSource);
             if (hits.length > 0) {
               const hitPose = hits[0].getPose(refSpace);
               cube.visible = true;
-              cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+              cube.position.set(
+                hitPose.transform.position.x,
+                hitPose.transform.position.y,
+                hitPose.transform.position.z
+              );
             }
           }
           renderer.render(scene, camera);
