@@ -63,7 +63,7 @@
 
     let viewer;
     let currentSession = null;
-    let renderer, canvas;
+    let renderer, canvas, scene, camera;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -166,6 +166,28 @@
 
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
+        // Setup THREE.js scene
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
+        renderer.autoClear = false;
+        renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local');
+        renderer.xr.setSession(session);
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera();
+
+        const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(0, 0, -1); // 1 метр перед камерой
+        scene.add(cube);
+
+        function onXRFrame(time, frame) {
+          renderer.render(scene, camera);
+        }
+
+        renderer.setAnimationLoop(onXRFrame);
+
         session.addEventListener('end', () => {
           currentSession = null;
           if (canvas && canvas.parentNode) canvas.remove();
@@ -174,12 +196,6 @@
           document.getElementById('tokenForm').style.display = 'block';
           document.getElementById('cesiumContainer').style.display = 'block';
         });
-
-        function onXRFrame(time, frame) {
-          session.requestAnimationFrame(onXRFrame);
-        }
-
-        session.requestAnimationFrame(onXRFrame);
 
       } catch (err) {
         alert("Ошибка запуска AR: " + err);
