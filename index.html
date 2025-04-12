@@ -64,6 +64,7 @@
     let viewer;
     let currentSession = null;
     let renderer, canvas, scene, camera, cube;
+    let refSpace = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -166,7 +167,7 @@
 
         await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
 
-        const refSpace = await session.requestReferenceSpace('local');
+        refSpace = await session.requestReferenceSpace('local');
         const viewerSpace = await session.requestReferenceSpace('viewer');
         const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
 
@@ -185,22 +186,28 @@
         scene.add(cube);
 
         function onXRFrame(time, frame) {
-          const viewerPose = frame.getViewerPose(refSpace);
-          if (viewerPose) {
-            const hitTestResults = frame.getHitTestResults(hitTestSource);
-            if (hitTestResults.length > 0) {
-              const hit = hitTestResults[0];
-              const hitPose = hit.getPose(refSpace);
-              cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+          if (!frame || !refSpace || !renderer) return;
+          try {
+            const viewerPose = frame.getViewerPose(refSpace);
+            if (viewerPose) {
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0];
+                const hitPose = hit.getPose(refSpace);
+                cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+              }
             }
+            renderer.render(scene, camera);
+          } catch (err) {
+            console.warn("onXRFrame error:", err);
           }
-          renderer.render(scene, camera);
         }
 
         renderer.setAnimationLoop(onXRFrame);
 
         session.addEventListener('end', () => {
           currentSession = null;
+          refSpace = null;
           if (canvas && canvas.parentNode) canvas.remove();
           document.getElementById('exitAR').style.display = 'none';
           document.getElementById('enterAR').style.display = 'block';
