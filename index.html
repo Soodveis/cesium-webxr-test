@@ -26,6 +26,16 @@
       width: 100%;
       height: 100%;
     }
+    video#arVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 999;
+      pointer-events: none;
+    }
     #messageBox {
       position: absolute;
       top: 50%;
@@ -43,6 +53,7 @@
 </head>
 <body>
   <div id="cesiumContainer"></div>
+  <video id="arVideo" autoplay playsinline muted></video>
   <button id="enterAR" disabled>Войти в AR</button>
   <div id="tokenForm">
     <div>
@@ -128,10 +139,7 @@
       }
 
       try {
-        const video = document.createElement('video');
-        video.style.display = 'none';
-        document.body.appendChild(video);
-
+        const video = document.getElementById('arVideo');
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
         await video.play();
