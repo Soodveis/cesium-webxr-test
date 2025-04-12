@@ -185,13 +185,13 @@
         scene.add(cube);
 
         function onXRFrame(time, frame) {
-          const pose = frame.getViewerPose(refSpace);
-          if (pose) {
+          const viewerPose = frame.getViewerPose(refSpace);
+          if (viewerPose) {
             const hitTestResults = frame.getHitTestResults(hitTestSource);
             if (hitTestResults.length > 0) {
               const hit = hitTestResults[0];
-              const pose = hit.getPose(refSpace);
-              cube.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+              const hitPose = hit.getPose(refSpace);
+              cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
             }
           }
           renderer.render(scene, camera);
