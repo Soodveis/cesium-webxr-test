@@ -29,16 +29,6 @@
       width: 100%;
       height: 100%;
     }
-    video#arVideo {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: 999;
-      pointer-events: none;
-    }
     #messageBox {
       position: absolute;
       top: 50%;
@@ -56,7 +46,6 @@
 </head>
 <body>
   <div id="cesiumContainer"></div>
-  <video id="arVideo" autoplay playsinline muted></video>
   <button id="enterAR" disabled>Войти в AR</button>
   <button id="exitAR">Выйти из AR</button>
   <div id="tokenForm">
@@ -75,7 +64,6 @@
     let viewer;
     let currentSession = null;
     let renderer, canvas;
-    let arVideoStream = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -144,11 +132,6 @@
       }
 
       try {
-        const video = document.getElementById('arVideo');
-        arVideoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
-        video.srcObject = arVideoStream;
-        await video.play();
-
         const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!supported) {
           alert("WebXR AR не поддерживается на этом устройстве.");
@@ -211,13 +194,6 @@
         session.addEventListener('end', () => {
           currentSession = null;
           if (canvas && canvas.parentNode) canvas.remove();
-          if (arVideoStream) {
-            arVideoStream.getTracks().forEach(track => track.stop());
-            arVideoStream = null;
-          }
-          const videoEl = document.getElementById('arVideo');
-          videoEl.srcObject = null;
-
           document.getElementById('exitAR').style.display = 'none';
           document.getElementById('enterAR').style.display = 'block';
           document.getElementById('tokenForm').style.display = 'block';
