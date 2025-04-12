@@ -140,8 +140,8 @@
         }
 
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
-          optionalFeatures: ['camera-access', 'local-floor', 'local', 'viewer'],
+          requiredFeatures: ['hit-test', 'dom-overlay', 'camera-access'],
+          optionalFeatures: ['local-floor', 'local', 'viewer'],
           domOverlay: { root: document.body }
         });
 
