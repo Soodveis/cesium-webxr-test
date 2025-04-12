@@ -210,12 +210,21 @@
 
         session.addEventListener('end', () => {
           currentSession = null;
-          canvas.remove();
+          if (canvas && canvas.parentNode) canvas.remove();
+          if (arVideoStream) {
+            arVideoStream.getTracks().forEach(track => track.stop());
+            arVideoStream = null;
+          }
+          const videoEl = document.getElementById('arVideo');
+          videoEl.srcObject = null;
+
           document.getElementById('exitAR').style.display = 'none';
           document.getElementById('enterAR').style.display = 'block';
           document.getElementById('tokenForm').style.display = 'block';
-          if (arVideoStream) {
-            arVideoStream.getTracks().forEach(track => track.stop());
+          document.getElementById('cesiumContainer').style.display = 'block';
+
+          if (viewer && viewer.scene) {
+            viewer.scene.requestRender();
           }
         });
 
