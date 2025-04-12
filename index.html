@@ -67,9 +67,6 @@
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
     let viewer, entity;
-    let currentSession = null;
-    let renderer, canvas, scene, camera, cube;
-    let refSpace = null;
     let gpsEntity = null;
 
     function showMessage(message) {
@@ -99,15 +96,23 @@
           shadows: true,
           useDefaultRenderLoop: true,
         });
+        viewer.scene.globe.depthTestAgainstTerrain = false;
       }
-      viewer.scene.globe.depthTestAgainstTerrain = false;
-      viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromUrl(Cesium.IonResource.fromAssetId(1));
+
+      viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromUrl(
+        Cesium.IonResource.fromAssetId(1)
+      );
+
       viewer.dataSources.removeAll();
       try {
         const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
-        const kmlDataSource = await Cesium.KmlDataSource.load(resource, { camera: viewer.scene.camera, canvas: viewer.scene.canvas });
-        viewer.dataSources.add(kmlDataSource);
-        viewer.flyTo(kmlDataSource);
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource, {
+          camera: viewer.scene.camera,
+          canvas: viewer.scene.canvas,
+          clampToGround: false
+        });
+        const dataSource = await viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(dataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
@@ -133,7 +138,6 @@
           optionalServices: ["battery_service"]
         });
         showMessage("Подключено к RTK-модулю: " + device.name);
-        // эмуляция координат
         setInterval(() => {
           const position = Cesium.Cartesian3.fromDegrees(30.31, 59.94);
           if (!gpsEntity) {
@@ -158,7 +162,7 @@
         validateInputs();
         await loadScene(token, assetId);
       }
-      // fallback GPS
+
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
           const coords = Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude);
