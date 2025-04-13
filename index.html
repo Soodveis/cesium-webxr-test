@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 70px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 120px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -136,8 +136,7 @@
     document.getElementById('connectRTK').onclick = async () => {
       try {
         const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: ['battery_service']
+          filters: [{ services: ['00001101-0000-1000-8000-00805f9b34fb'] }]
         });
         showMessage("Подключено к устройству: " + device.name);
       } catch (err) {
@@ -161,8 +160,8 @@
           if (!gpsEntity) {
             gpsEntity = viewer.entities.add({
               position: coords,
-              point: { pixelSize: 16, color: Cesium.Color.RED },
-              label: { text: "GPS", font: 'bold 16px sans-serif', fillColor: Cesium.Color.WHITE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM }
+              point: { pixelSize: 16, color: Cesium.Color.RED, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+              label: { text: "GPS", font: 'bold 16px sans-serif', fillColor: Cesium.Color.WHITE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, disableDepthTestDistance: Number.POSITIVE_INFINITY }
             });
             viewer.camera.flyTo({
               destination: Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude, 500)
