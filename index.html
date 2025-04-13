@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 100px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 90px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -135,10 +135,12 @@
 
     document.getElementById('connectRTK').onclick = async () => {
       try {
-        const device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true
-        });
-        showMessage("Подключено к устройству: " + device.name);
+        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+        if (!device.gatt) {
+          showMessage("Устройство не поддерживается Web Bluetooth. Используйте USB-подключение или bridge.");
+        } else {
+          showMessage("Подключено к устройству: " + device.name);
+        }
       } catch (err) {
         showMessage("Ошибка Bluetooth: " + err);
       }
@@ -156,20 +158,32 @@
 
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
-          const coords = Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude);
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const position = Cesium.Cartesian3.fromDegrees(lon, lat);
+
           if (!gpsEntity) {
             gpsEntity = viewer.entities.add({
-              position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude), false),
-              point: { pixelSize: 16, color: Cesium.Color.RED, disableDepthTestDistance: Number.POSITIVE_INFINITY },
-              label: { text: "GPS", font: 'bold 16px sans-serif', fillColor: Cesium.Color.WHITE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, disableDepthTestDistance: Number.POSITIVE_INFINITY }
+              position,
+              point: {
+                pixelSize: 16,
+                color: Cesium.Color.RED,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              },
+              label: {
+                text: "GPS",
+                font: 'bold 16px sans-serif',
+                fillColor: Cesium.Color.WHITE,
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              }
             });
-            viewer.camera.flyTo({
-              destination: Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude, 500)
-            });
+            viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500) });
           } else {
-            gpsEntity.position = new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(pos.coords.longitude, pos.coords.latitude), false);
+            gpsEntity.position = position;
           }
-          document.getElementById('gpsStatus').textContent = `GPS: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+
+          document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }, err => {
           document.getElementById('gpsStatus').textContent = "Ошибка GPS: " + err.message;
         }, { enableHighAccuracy: true });
