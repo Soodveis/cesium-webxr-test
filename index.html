@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, firstFly = true;
+    let viewer, gpsEntity = null, currentPosition = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -148,16 +148,29 @@
             const parts = text.split(',');
             const lat = parseFloat(parts[2].slice(0, 2)) + parseFloat(parts[2].slice(2)) / 60;
             const lon = parseFloat(parts[4].slice(0, 3)) + parseFloat(parts[4].slice(3)) / 60;
-            const position = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
-            if (viewer && gpsEntity) {
-              gpsEntity.position = new Cesium.CallbackProperty(() => position, false);
-            }
+            currentPosition = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
           }
         }
         reader.releaseLock();
       } catch (err) {
         showMessage("Ошибка Serial API: " + err);
       }
+    };
+
+    document.getElementById('enterAR').onclick = () => {
+      if (!navigator.xr) {
+        alert("WebXR не поддерживается на этом устройстве.");
+        return;
+      }
+      navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test', 'dom-overlay'],
+        domOverlay: { root: document.body }
+      }).then(session => {
+        showMessage("WebXR AR-сессия успешно запущена!");
+        // тут будет добавление камеры и AR сцены (будет доработано на следующем шаге)
+      }).catch(err => {
+        showMessage("Ошибка запуска AR-сессии: " + err.message);
+      });
     };
 
     window.onload = async () => {
@@ -174,12 +187,12 @@
         navigator.geolocation.watchPosition(pos => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const position = Cesium.Cartesian3.fromDegrees(lon, lat);
+          currentPosition = Cesium.Cartesian3.fromDegrees(lon, lat);
 
-          if (!gpsEntity) {
+          if (!gpsEntity && viewer) {
             gpsEntity = viewer.entities.add({
               id: 'gps-entity',
-              position: new Cesium.CallbackProperty(() => position, false),
+              position: new Cesium.CallbackProperty(() => currentPosition, false),
               point: {
                 pixelSize: 16,
                 color: Cesium.Color.RED,
