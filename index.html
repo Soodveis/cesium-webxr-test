@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, currentPosition = null;
+    let viewer, gpsEntity = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -148,7 +148,8 @@
             const parts = text.split(',');
             const lat = parseFloat(parts[2].slice(0, 2)) + parseFloat(parts[2].slice(2)) / 60;
             const lon = parseFloat(parts[4].slice(0, 3)) + parseFloat(parts[4].slice(3)) / 60;
-            currentPosition = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
+            const position = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
+            if (gpsEntity) gpsEntity.position = position;
           }
         }
         reader.releaseLock();
@@ -157,19 +158,37 @@
       }
     };
 
-    document.getElementById('enterAR').onclick = () => {
+    document.getElementById('enterAR').onclick = async () => {
       if (!navigator.xr) {
         alert("WebXR не поддерживается на этом устройстве.");
         return;
       }
-      navigator.xr.requestSession('immersive-ar', {
+
+      const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test', 'dom-overlay'],
         domOverlay: { root: document.body }
-      }).then(session => {
-        showMessage("WebXR AR-сессия успешно запущена!");
-        // тут будет добавление камеры и AR сцены (будет доработано на следующем шаге)
-      }).catch(err => {
-        showMessage("Ошибка запуска AR-сессии: " + err.message);
+      });
+
+      showMessage("WebXR AR-сессия успешно запущена!");
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.xr.enabled = true;
+      document.body.appendChild(renderer.domElement);
+      renderer.xr.setSession(session);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+      scene.add(camera);
+
+      const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const cube = new THREE.Mesh(geometry, material);
+      cube.position.set(0, 0, -1);
+      scene.add(cube);
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
       });
     };
 
@@ -187,12 +206,12 @@
         navigator.geolocation.watchPosition(pos => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          currentPosition = Cesium.Cartesian3.fromDegrees(lon, lat);
+          const position = Cesium.Cartesian3.fromDegrees(lon, lat);
 
           if (!gpsEntity && viewer) {
             gpsEntity = viewer.entities.add({
               id: 'gps-entity',
-              position: new Cesium.CallbackProperty(() => currentPosition, false),
+              position: position,
               point: {
                 pixelSize: 16,
                 color: Cesium.Color.RED,
@@ -206,6 +225,8 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
+          } else {
+            gpsEntity.position = position;
           }
 
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
