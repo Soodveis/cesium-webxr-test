@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 90px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 130px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null;
+    let viewer, gpsEntity = null, firstFly = true;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -137,9 +137,9 @@
       try {
         const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
         if (!device.gatt) {
-          showMessage("Устройство не поддерживается Web Bluetooth. Используйте USB-подключение или bridge.");
+          showMessage("Устройство не поддерживается Web Bluetooth. Возможно, используется SPP (Serial Port Profile).");
         } else {
-          showMessage("Подключено к устройству: " + device.name);
+          showMessage("Подключено к устройству: " + (device.name || 'Без имени'));
         }
       } catch (err) {
         showMessage("Ошибка Bluetooth: " + err);
@@ -178,7 +178,10 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
-            viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500) });
+            if (firstFly) {
+              viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500) });
+              firstFly = false;
+            }
           } else {
             gpsEntity.position = position;
           }
