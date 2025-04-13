@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 130px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 100px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -137,7 +137,7 @@
       try {
         const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
         if (!device.gatt) {
-          showMessage("Устройство не поддерживается Web Bluetooth. Возможно, используется SPP (Serial Port Profile).");
+          showMessage("Устройство не поддерживается Web Bluetooth. Возможно, используется SPP (Serial Port Profile). Нужно приложение-посредник или Web Serial (USB). Поддержка GATT отсутствует.");
         } else {
           showMessage("Подключено к устройству: " + (device.name || 'Без имени'));
         }
@@ -164,7 +164,8 @@
 
           if (!gpsEntity) {
             gpsEntity = viewer.entities.add({
-              position,
+              id: 'gps-entity',
+              position: new Cesium.CallbackProperty(() => position, false),
               point: {
                 pixelSize: 16,
                 color: Cesium.Color.RED,
@@ -182,8 +183,6 @@
               viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500) });
               firstFly = false;
             }
-          } else {
-            gpsEntity.position = position;
           }
 
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
