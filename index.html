@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 100px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 120px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -64,7 +64,7 @@
       Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
     </div>
     <button id="loadScene">Загрузить сцену</button>
-    <button id="connectRTK">Подключиться к RTK (Bluetooth)</button>
+    <button id="connectRTK">Подключиться к RTK (USB)</button>
   </div>
   <div id="messageBox"></div>
   <div id="gpsStatus">Ожидание GPS...</div>
@@ -135,14 +135,28 @@
 
     document.getElementById('connectRTK').onclick = async () => {
       try {
-        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
-        if (!device.gatt) {
-          showMessage("Устройство не поддерживается Web Bluetooth. Возможно, используется SPP (Serial Port Profile). Нужно приложение-посредник или Web Serial (USB). Поддержка GATT отсутствует.");
-        } else {
-          showMessage("Подключено к устройству: " + (device.name || 'Без имени'));
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        const reader = port.readable.getReader();
+        showMessage("Подключено к RTK по USB");
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const text = new TextDecoder().decode(value);
+          if (text.includes("GGA")) {
+            const parts = text.split(',');
+            const lat = parseFloat(parts[2].slice(0, 2)) + parseFloat(parts[2].slice(2)) / 60;
+            const lon = parseFloat(parts[4].slice(0, 3)) + parseFloat(parts[4].slice(3)) / 60;
+            const position = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
+            if (viewer && gpsEntity) {
+              gpsEntity.position = new Cesium.CallbackProperty(() => position, false);
+            }
+          }
         }
+        reader.releaseLock();
       } catch (err) {
-        showMessage("Ошибка Bluetooth: " + err);
+        showMessage("Ошибка Serial API: " + err);
       }
     };
 
@@ -179,10 +193,6 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
-            if (firstFly) {
-              viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500) });
-              firstFly = false;
-            }
           }
 
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
