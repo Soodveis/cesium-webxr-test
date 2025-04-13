@@ -10,18 +10,23 @@
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
     }
     #enterAR, #exitAR, #tokenForm, #gpsStatus {
-      position: absolute; z-index: 1000; font-size: 16px;
+      position: absolute; z-index: 1000; font-size: 18px;
     }
     #enterAR {
-      top: 10px; left: 10px; padding: 12px 20px; background: #28a745; color: white; border-radius: 6px; cursor: pointer;
+      top: 10px; left: 10px; padding: 16px 24px; background: #28a745; color: white; border-radius: 6px; cursor: pointer;
     }
     #exitAR {
-      top: 10px; right: 10px; padding: 12px 20px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
+      top: 10px; right: 10px; padding: 16px 24px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 60px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 6px;
+      top: 70px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 15px; border-radius: 6px;
     }
-    #tokenForm input { width: 250px; margin-bottom: 5px; }
+    #tokenForm input {
+      width: 300px; margin-bottom: 10px; font-size: 18px;
+    }
+    #tokenForm button {
+      padding: 12px 18px; font-size: 18px;
+    }
     canvas.xr-canvas {
       position: absolute;
       top: 0;
@@ -43,7 +48,7 @@
       display: none;
     }
     #gpsStatus {
-      bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px; border-radius: 6px;
+      bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px; border-radius: 6px;
     }
   </style>
 </head>
@@ -66,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, entity, gpsEntity = null, xrSession = null;
+    let viewer, gpsEntity = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -131,31 +136,13 @@
     document.getElementById('connectRTK').onclick = async () => {
       try {
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: "RTK" }],
-          optionalServices: ["battery_service"]
+          acceptAllDevices: true,
+          optionalServices: ['battery_service']
         });
-        showMessage("Подключено к RTK-модулю: " + device.name);
+        showMessage("Подключено к устройству: " + device.name);
       } catch (err) {
         showMessage("Ошибка Bluetooth: " + err);
       }
-    };
-
-    document.getElementById('enterAR').onclick = async () => {
-      if (!navigator.xr) return showMessage("WebXR не поддерживается");
-      xrSession = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test', 'dom-overlay'], domOverlay: { root: document.body } });
-      document.getElementById('enterAR').style.display = 'none';
-      document.getElementById('exitAR').style.display = 'block';
-      showMessage("AR режим активирован");
-    };
-
-    document.getElementById('exitAR').onclick = async () => {
-      if (xrSession) {
-        await xrSession.end();
-        xrSession = null;
-        showMessage("AR режим завершен");
-      }
-      document.getElementById('enterAR').style.display = 'block';
-      document.getElementById('exitAR').style.display = 'none';
     };
 
     window.onload = async () => {
@@ -174,8 +161,8 @@
           if (!gpsEntity) {
             gpsEntity = viewer.entities.add({
               position: coords,
-              point: { pixelSize: 10, color: Cesium.Color.BLUE },
-              label: { text: "GPS", font: '14px sans-serif' }
+              point: { pixelSize: 14, color: Cesium.Color.RED },
+              label: { text: "GPS", font: 'bold 14px sans-serif', fillColor: Cesium.Color.WHITE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM }
             });
           } else {
             gpsEntity.position = coords;
