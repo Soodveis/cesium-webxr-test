@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, fixedGpsPosition = null, followGPS = true;
+    let viewer, gpsEntity = null, fixedGpsPosition = null, followGPS = true, hasCentered = false;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -174,7 +174,7 @@
       }
       try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['local-floor'],
+          requiredFeatures: ['local'],
           optionalFeatures: ['dom-overlay'],
           domOverlay: { root: document.body }
         });
@@ -231,12 +231,13 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
-            viewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 50.0, 200.0));
-          } else if (!fixedGpsPosition && gpsEntity) {
+          }
+          if (!fixedGpsPosition && gpsEntity) {
             gpsEntity.position = position;
           }
-          if (followGPS && viewer && !fixedGpsPosition) {
-            viewer.camera.flyTo({ destination: position, duration: 1.5 });
+          if (!hasCentered && viewer) {
+            viewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 50.0, 200.0));
+            hasCentered = true;
           }
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }, err => {
