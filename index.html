@@ -19,7 +19,7 @@
       top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 100px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 120px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
     }
     #tokenForm input {
       width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null;
+    let viewer, gpsEntity = null, fixedGpsPosition = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -135,6 +135,7 @@
 
     document.getElementById('connectRTK').onclick = async () => {
       try {
+        if (!navigator.serial) throw new Error("Serial API не поддерживается в этом браузере");
         const port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
         const reader = port.readable.getReader();
@@ -149,7 +150,8 @@
             const lat = parseFloat(parts[2].slice(0, 2)) + parseFloat(parts[2].slice(2)) / 60;
             const lon = parseFloat(parts[4].slice(0, 3)) + parseFloat(parts[4].slice(3)) / 60;
             const position = Cesium.Cartesian3.fromDegrees(parts[3] === 'S' ? -lat : lat, parts[5] === 'W' ? -lon : lon);
-            if (gpsEntity) gpsEntity.position = new Cesium.ConstantPositionProperty(position);
+            fixedGpsPosition = position;
+            if (gpsEntity) gpsEntity.position = position;
           }
         }
         reader.releaseLock();
@@ -166,7 +168,7 @@
 
       try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test', 'dom-overlay'],
+          requiredFeatures: ['local', 'dom-overlay'],
           domOverlay: { root: document.body }
         });
 
@@ -176,7 +178,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true;
         document.body.appendChild(renderer.domElement);
-        await renderer.xr.setSession(session);
+        renderer.xr.setSession(session);
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -191,8 +193,8 @@
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
         });
-      } catch (e) {
-        showMessage("Ошибка AR-сессии: " + e.message);
+      } catch (error) {
+        showMessage("Ошибка AR-сессии: " + error.message);
       }
     };
 
@@ -215,7 +217,7 @@
           if (!gpsEntity && viewer) {
             gpsEntity = viewer.entities.add({
               id: 'gps-entity',
-              position: new Cesium.ConstantPositionProperty(position),
+              position: position,
               point: {
                 pixelSize: 16,
                 color: Cesium.Color.RED,
@@ -229,8 +231,8 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
-          } else if (gpsEntity) {
-            gpsEntity.position = new Cesium.ConstantPositionProperty(position);
+          } else if (!fixedGpsPosition) {
+            gpsEntity.position = position;
           }
 
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
