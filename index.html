@@ -77,7 +77,7 @@
       const box = document.getElementById('messageBox');
       box.textContent = message;
       box.style.display = 'block';
-      setTimeout(() => box.style.display = 'none', 3000);
+      setTimeout(() => box.style.display = 'none', 4000);
     }
 
     function validateInputs() {
@@ -136,12 +136,13 @@
 
     document.getElementById('connectRTK').onclick = async () => {
       try {
-        if (!('serial' in navigator)) throw new Error("Serial API не поддерживается в этом браузере");
+        if (!('serial' in navigator) || typeof navigator.serial.requestPort !== 'function') {
+          throw new Error("Serial API не поддерживается в этом браузере");
+        }
         const port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
         const reader = port.readable.getReader();
         showMessage("Подключено к RTK по USB");
-
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -171,31 +172,26 @@
         showMessage("AR-сессии не поддерживаются на этом устройстве.");
         return;
       }
-
       try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          optionalFeatures: ['local', 'dom-overlay'],
+          requiredFeatures: ['local-floor'],
+          optionalFeatures: ['dom-overlay'],
           domOverlay: { root: document.body }
         });
-
         showMessage("WebXR AR-сессия успешно запущена!");
-
         const renderer = new THREE.WebGLRenderer({ alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true;
         document.body.appendChild(renderer.domElement);
         renderer.xr.setSession(session);
-
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
         scene.add(camera);
-
         const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const cube = new THREE.Mesh(geometry, material);
         cube.position.set(0, 0, -1);
         scene.add(cube);
-
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
         });
@@ -213,13 +209,11 @@
         validateInputs();
         await loadScene(token, assetId);
       }
-
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const position = Cesium.Cartesian3.fromDegrees(lon, lat);
-
           if (!gpsEntity && viewer) {
             gpsEntity = viewer.entities.add({
               id: 'gps-entity',
@@ -237,17 +231,13 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
+            viewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 50.0, 200.0));
           } else if (!fixedGpsPosition && gpsEntity) {
             gpsEntity.position = position;
           }
-
           if (followGPS && viewer && !fixedGpsPosition) {
-            viewer.camera.flyTo({
-              destination: position,
-              duration: 1.5
-            });
+            viewer.camera.flyTo({ destination: position, duration: 1.5 });
           }
-
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }, err => {
           document.getElementById('gpsStatus').textContent = "Ошибка GPS: " + err.message;
