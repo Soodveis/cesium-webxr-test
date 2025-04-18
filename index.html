@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, fixedGpsPosition = null;
+    let viewer, gpsEntity = null, fixedGpsPosition = null, followGPS = true;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -101,6 +101,7 @@
           useDefaultRenderLoop: true,
         });
         viewer.scene.globe.depthTestAgainstTerrain = true;
+        viewer.screenSpaceEventHandler.setInputAction(() => followGPS = false, Cesium.ScreenSpaceEventType.LEFT_DOWN);
       }
 
       viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
@@ -135,7 +136,7 @@
 
     document.getElementById('connectRTK').onclick = async () => {
       try {
-        if (!navigator.serial) throw new Error("Serial API не поддерживается в этом браузере");
+        if (!('serial' in navigator)) throw new Error("Serial API не поддерживается в этом браузере");
         const port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
         const reader = port.readable.getReader();
@@ -156,19 +157,24 @@
         }
         reader.releaseLock();
       } catch (err) {
-        showMessage("Ошибка Serial API: " + err);
+        showMessage("Ошибка Serial API: " + err.message);
       }
     };
 
     document.getElementById('enterAR').onclick = async () => {
       if (!navigator.xr) {
-        alert("WebXR не поддерживается на этом устройстве.");
+        showMessage("WebXR не поддерживается на этом устройстве.");
+        return;
+      }
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!supported) {
+        showMessage("AR-сессии не поддерживаются на этом устройстве.");
         return;
       }
 
       try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['local', 'dom-overlay'],
+          optionalFeatures: ['local', 'dom-overlay'],
           domOverlay: { root: document.body }
         });
 
@@ -231,8 +237,15 @@
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
               }
             });
-          } else if (!fixedGpsPosition) {
+          } else if (!fixedGpsPosition && gpsEntity) {
             gpsEntity.position = position;
+          }
+
+          if (followGPS && viewer && !fixedGpsPosition) {
+            viewer.camera.flyTo({
+              destination: position,
+              duration: 1.5
+            });
           }
 
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
