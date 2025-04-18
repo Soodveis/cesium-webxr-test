@@ -174,8 +174,8 @@
       }
       try {
         const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['local'],
-          optionalFeatures: ['dom-overlay'],
+          requiredFeatures: ['viewer'],
+          optionalFeatures: ['local', 'dom-overlay'],
           domOverlay: { root: document.body }
         });
         showMessage("WebXR AR-сессия успешно запущена!");
@@ -194,6 +194,11 @@
         scene.add(cube);
         renderer.setAnimationLoop(() => {
           renderer.render(scene, camera);
+        });
+        session.addEventListener("end", () => {
+          renderer.setAnimationLoop(null);
+          renderer.dispose();
+          renderer.domElement.remove();
         });
       } catch (error) {
         showMessage("Ошибка AR-сессии: " + error.message);
@@ -236,7 +241,7 @@
             gpsEntity.position = position;
           }
           if (!hasCentered && viewer) {
-            viewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 50.0, 200.0));
+            viewer.camera.flyTo({ destination: position, duration: 2 });
             hasCentered = true;
           }
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
