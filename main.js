@@ -125,6 +125,11 @@ window.saveSettings = async function () {
     return;
   }
 
+  if (gpsEntity && viewer) {
+    viewer.entities.remove(gpsEntity);
+    gpsEntity = null;
+  }
+
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: terrain,
     imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
