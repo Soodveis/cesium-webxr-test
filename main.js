@@ -1,6 +1,5 @@
 // main.js — правки: terrain по умолчанию + KML слой через assetId
 let viewer = null;
-let gpsEntity = null;
 let useRTK = false;
 let port, reader;
 
@@ -80,21 +79,6 @@ function updateGPS(lat, lon, fix = 0) {
     fixEl.textContent = 'NO FIX';
     fixEl.className = 'none';
   }
-
-  if (!viewer || viewer.scene.mode !== Cesium.SceneMode.SCENE3D) return;
-  const position = Cesium.Cartesian3.fromDegrees(lon, lat);
-  if (!gpsEntity) {
-    gpsEntity = viewer.entities.add({
-      name: "GPS Marker",
-      position: position,
-      billboard: {
-        image: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        scale: 0.05
-      }
-    });
-  } else {
-    gpsEntity.position = position;
-  }
 }
 
 function fallbackGeolocation() {
@@ -125,11 +109,7 @@ window.saveSettings = async function () {
     return;
   }
 
-  if (gpsEntity && viewer) {
-    viewer.entities.remove(gpsEntity);
-    gpsEntity = null;
-  }
-
+  
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: terrain,
     imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
