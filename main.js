@@ -112,7 +112,6 @@ window.saveSettings = async function () {
     });
   }
 
-  // Полная очистка сцены
   viewer.dataSources.removeAll();
   viewer.entities.removeAll();
   viewer.scene.primitives.removeAll();
@@ -124,10 +123,20 @@ window.saveSettings = async function () {
       canvas: viewer.scene.canvas,
       clampToGround: true
     });
-    await viewer.dataSources.add(kmlLayer);
-    await viewer.flyTo(kmlLayer);
 
-    // Удаляем лишние сущности
+    await viewer.dataSources.add(kmlLayer);
+
+    const validEntities = kmlLayer.entities.values.filter(entity => {
+      const position = entity.position?.getValue(Cesium.JulianDate.now());
+      return position !== undefined;
+    });
+
+    if (validEntities.length > 0) {
+      await viewer.flyTo(validEntities);
+    } else {
+      console.warn("Нет подходящих сущностей для навигации.");
+    }
+
     const badEntities = kmlLayer.entities.values.filter(entity => {
       const position = entity.position?.getValue(Cesium.JulianDate.now());
       if (!position) return true;
@@ -137,6 +146,7 @@ window.saveSettings = async function () {
       const height = carto.height;
       return (lon === 0 && lat === 0) || height > 10;
     });
+
     badEntities.forEach(entity => kmlLayer.entities.remove(entity));
 
     setTimeout(() => {
