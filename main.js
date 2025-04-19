@@ -81,16 +81,19 @@ function updateGPS(lat, lon, fix = 0) {
     fixEl.className = 'none';
   }
 
-  if (viewer && gpsEntity) {
-    viewer.entities.remove(gpsEntity);
+  if (!viewer) return;
+  const position = Cesium.Cartesian3.fromDegrees(lon, lat);
+  if (!gpsEntity) {
     gpsEntity = viewer.entities.add({
       name: "GPS Marker",
-      position: Cesium.Cartesian3.fromDegrees(lon, lat),
+      position: position,
       billboard: {
         image: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
         scale: 0.05
       }
     });
+  } else {
+    gpsEntity.position = position;
   }
 }
 
