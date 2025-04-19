@@ -128,10 +128,13 @@ window.saveSettings = async function () {
 
   try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
-    const kmlLayer = await Cesium.KmlDataSource.load(resource,
-      { camera: viewer.scene.camera, canvas: viewer.scene.canvas }
-    );
+    const kmlLayer = await Cesium.KmlDataSource.load(resource, {
+      camera: viewer.scene.camera,
+      canvas: viewer.scene.canvas,
+      clampToGround: true
+    });
     viewer.dataSources.add(kmlLayer);
+    viewer.flyTo(kmlLayer);
   } catch (err) {
     console.error("Ошибка загрузки KML:", err);
     alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
