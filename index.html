@@ -9,24 +9,19 @@
     html, body, #cesiumContainer {
       width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
     }
-    #enterAR, #exitAR, #tokenForm, #gpsStatus {
-      position: absolute; z-index: 1000; font-size: 20px;
+    #enterAR, #exitAR, #tokenForm {
+      position: absolute; z-index: 1000; font-size: 16px;
     }
     #enterAR {
-      top: 10px; left: 10px; padding: 24px 36px; background: #28a745; color: white; border-radius: 6px; cursor: pointer;
+      top: 10px; left: 10px; padding: 12px 20px; background: #28a745; color: white; border-radius: 6px; cursor: pointer;
     }
     #exitAR {
-      top: 10px; right: 10px; padding: 24px 36px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
+      top: 10px; right: 10px; padding: 12px 20px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
     }
     #tokenForm {
-      top: 120px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 6px;
+      top: 60px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 6px;
     }
-    #tokenForm input {
-      width: 400px; margin-bottom: 15px; font-size: 20px; padding: 6px;
-    }
-    #tokenForm button {
-      padding: 16px 24px; font-size: 20px; margin-top: 10px;
-    }
+    #tokenForm input { width: 250px; margin-bottom: 5px; }
     canvas.xr-canvas {
       position: absolute;
       top: 0;
@@ -47,9 +42,6 @@
       z-index: 1100;
       display: none;
     }
-    #gpsStatus {
-      bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px 14px; border-radius: 6px; font-size: 18px;
-    }
   </style>
 </head>
 <body>
@@ -64,20 +56,21 @@
       Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
     </div>
     <button id="loadScene">Загрузить сцену</button>
-    <button id="connectRTK">Подключиться к RTK (USB)</button>
   </div>
   <div id="messageBox"></div>
-  <div id="gpsStatus">Ожидание GPS...</div>
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, hasCentered = false, arRenderer = null;
+    let viewer;
+    let currentSession = null;
+    let renderer, canvas, scene, camera, cube;
+    let refSpace = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
       box.textContent = message;
       box.style.display = 'block';
-      setTimeout(() => box.style.display = 'none', 4000);
+      setTimeout(() => box.style.display = 'none', 3000);
     }
 
     function validateInputs() {
@@ -100,95 +93,137 @@
           shadows: true,
           useDefaultRenderLoop: true,
         });
-        viewer.scene.globe.depthTestAgainstTerrain = true;
       }
-
-      viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
       viewer.dataSources.removeAll();
       try {
         const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
-        const kmlDataSource = await Cesium.KmlDataSource.load(resource, {
-          camera: viewer.scene.camera,
-          canvas: viewer.scene.canvas,
-          clampToGround: true
-        });
-        const dataSource = await viewer.dataSources.add(kmlDataSource);
-        console.log("KML загружен, центрируем камеру...");
-        if (viewer.scene && viewer.scene.camera) {
-          viewer.flyTo(dataSource);
-        }
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(kmlDataSource);
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
       }
     }
 
-    document.getElementById('loadScene').onclick = async () => {
+    document.getElementById('loadScene').onclick = async function () {
       const token = document.getElementById('accessToken').value.trim();
       const assetId = document.getElementById('assetId').value.trim();
+
       if (!token || !assetId) {
         alert("Пожалуйста, введите Access Token и Asset ID");
         return;
       }
+
       localStorage.setItem('cesiumToken', token);
       localStorage.setItem('cesiumAssetId', assetId);
+
       await loadScene(token, assetId);
     };
 
-    document.getElementById('connectRTK').onclick = async () => {
+    document.getElementById('enterAR').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Сначала введите Access Token и Asset ID.");
+        return;
+      }
+
+      if (!('xr' in navigator)) {
+        alert("WebXR не поддерживается вашим браузером.");
+        return;
+      }
+
       try {
-        if (!('serial' in navigator) || typeof navigator.serial.requestPort !== 'function') {
-          throw new Error("Serial API не поддерживается в этом браузере. Используйте Chrome с Experimental Web Platform features.");
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!supported) {
+          alert("WebXR AR не поддерживается на этом устройстве.");
+          return;
         }
-        const port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 });
-        showMessage("Подключено к RTK по USB");
+
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test', 'dom-overlay'],
+          optionalFeatures: ['local-floor', 'local', 'viewer'],
+          domOverlay: { root: document.body }
+        });
+
+        currentSession = session;
+        document.getElementById('exitAR').style.display = 'block';
+        document.getElementById('tokenForm').style.display = 'none';
+        document.getElementById('enterAR').style.display = 'none';
+        document.getElementById('cesiumContainer').style.display = 'none';
+
+        canvas = document.createElement('canvas');
+        canvas.className = 'xr-canvas';
+        document.body.appendChild(canvas);
+
+        const gl = canvas.getContext('webgl2', { xrCompatible: true }) || canvas.getContext('webgl', { xrCompatible: true });
+
+        if (!gl) {
+          alert("Не удалось инициализировать WebGL контекст.");
+          return;
+        }
+
+        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+        refSpace = await session.requestReferenceSpace('local');
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
+        renderer.autoClear = false;
+        renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local');
+        renderer.xr.setSession(session);
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera();
+
+        const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true });
+        cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        function onXRFrame(time, frame) {
+          if (!frame || !refSpace || !renderer) return;
+          try {
+            const viewerPose = frame.getViewerPose(refSpace);
+            if (viewerPose) {
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0];
+                const hitPose = hit.getPose(refSpace);
+                cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+              }
+            }
+            renderer.render(scene, camera);
+          } catch (err) {
+            console.warn("onXRFrame error:", err);
+          }
+        }
+
+        renderer.setAnimationLoop(onXRFrame);
+
+        session.addEventListener('end', () => {
+          currentSession = null;
+          refSpace = null;
+          if (canvas && canvas.parentNode) canvas.remove();
+          document.getElementById('exitAR').style.display = 'none';
+          document.getElementById('enterAR').style.display = 'block';
+          document.getElementById('tokenForm').style.display = 'block';
+          document.getElementById('cesiumContainer').style.display = 'block';
+        });
+
       } catch (err) {
-        showMessage("Ошибка Serial API: " + err.message);
+        alert("Ошибка запуска AR: " + err);
+        console.error(err);
       }
     };
 
-    document.getElementById('enterAR').onclick = async () => {
-      if (!navigator.xr) {
-        showMessage("WebXR не поддерживается на этом устройстве.");
-        return;
-      }
-      const supported = await navigator.xr.isSessionSupported('immersive-ar');
-      if (!supported) {
-        showMessage("AR-сессии не поддерживаются на этом устройстве.");
-        return;
-      }
-      try {
-        const session = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['viewer'],
-          optionalFeatures: ['dom-overlay'],
-          domOverlay: { root: document.body }
-        });
-        showMessage("WebXR AR-сессия успешно запущена!");
-        arRenderer = new THREE.WebGLRenderer({ alpha: true });
-        arRenderer.setSize(window.innerWidth, window.innerHeight);
-        arRenderer.xr.enabled = true;
-        document.body.appendChild(arRenderer.domElement);
-        arRenderer.xr.setSession(session);
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-        scene.add(camera);
-        const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.set(0, 0, -1);
-        scene.add(cube);
-        arRenderer.setAnimationLoop(() => {
-          arRenderer.render(scene, camera);
-        });
-        session.addEventListener('end', () => {
-          arRenderer.setAnimationLoop(null);
-          if (arRenderer.domElement && arRenderer.domElement.remove) {
-            arRenderer.domElement.remove();
-          }
-        });
-      } catch (error) {
-        showMessage("Ошибка AR-сессии: " + error.message);
+    document.getElementById('exitAR').onclick = function () {
+      if (currentSession) {
+        currentSession.end();
       }
     };
 
@@ -200,43 +235,6 @@
         document.getElementById('assetId').value = assetId;
         validateInputs();
         await loadScene(token, assetId);
-      }
-      if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
-          if (!gpsEntity && viewer) {
-            gpsEntity = viewer.entities.add({
-              id: 'gps-entity',
-              position: position,
-              point: {
-                pixelSize: 16,
-                color: Cesium.Color.RED,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-              },
-              label: {
-                text: "GPS",
-                font: 'bold 16px sans-serif',
-                fillColor: Cesium.Color.WHITE,
-                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
-              }
-            });
-          } else if (gpsEntity) {
-            gpsEntity.position = position;
-          }
-          if (!hasCentered && viewer) {
-            viewer.camera.flyTo({ destination: position });
-            hasCentered = true;
-          }
-          if (viewer) viewer.trackedEntity = gpsEntity;
-          document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-        }, err => {
-          document.getElementById('gpsStatus').textContent = "Ошибка GPS: " + err.message;
-        }, { enableHighAccuracy: true });
-      } else {
-        document.getElementById('gpsStatus').textContent = "GPS недоступен в браузере";
       }
     };
   </script>
