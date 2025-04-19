@@ -151,7 +151,7 @@ window.saveSettings = async function () {
   }
 
   fallbackGeolocation();
-}};
+};
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
 
