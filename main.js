@@ -127,41 +127,35 @@ window.saveSettings = async function () {
       clampToGround: true
     });
 
-    await viewer.dataSources.add(kmlLayer);
+    const allEntities = kmlLayer.entities.values;
+    const validEntities = [];
 
-    console.log("Всего сущностей в KML:", kmlLayer.entities.values.length);
-    kmlLayer.entities.values.forEach(entity => {
+    allEntities.forEach(entity => {
       const pos = entity.position?.getValue(Cesium.JulianDate.now());
       if (pos) {
         const carto = Cesium.Cartographic.fromCartesian(pos);
-        console.log("Entity координаты:", Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height);
+        const lon = Cesium.Math.toDegrees(carto.longitude);
+        const lat = Cesium.Math.toDegrees(carto.latitude);
+        const height = carto.height;
+
+        if (!((lon === 0 && lat === 0) || height > 1000)) {
+          validEntities.push(entity);
+        } else {
+          kmlLayer.entities.remove(entity);
+        }
       } else {
-        console.warn("Entity без позиции:", entity);
+        kmlLayer.entities.remove(entity);
       }
     });
 
-    const validEntities = kmlLayer.entities.values.filter(entity => {
-      const position = entity.position?.getValue(Cesium.JulianDate.now());
-      return position !== undefined;
-    });
+    await viewer.dataSources.add(kmlLayer);
 
+    console.log("Всего корректных сущностей:", validEntities.length);
     if (validEntities.length > 0) {
       await viewer.flyTo(validEntities);
     } else {
       console.warn("Нет подходящих сущностей для навигации.");
     }
-
-    const badEntities = kmlLayer.entities.values.filter(entity => {
-      const position = entity.position?.getValue(Cesium.JulianDate.now());
-      if (!position) return true;
-      const carto = Cesium.Cartographic.fromCartesian(position);
-      const lon = Cesium.Math.toDegrees(carto.longitude);
-      const lat = Cesium.Math.toDegrees(carto.latitude);
-      const height = carto.height;
-      return (lon === 0 && lat === 0) || height > 10;
-    });
-
-    badEntities.forEach(entity => kmlLayer.entities.remove(entity));
 
     setTimeout(() => {
       fallbackGeolocation();
