@@ -70,5 +70,14 @@
   </div>
   <div id="messageBox"></div>
   <script type="module" src="./main.js"></script>
+  <script>
+    document.getElementById('loadScene').addEventListener('click', () => {
+      if (typeof saveSettings === 'function') {
+        saveSettings();
+      } else {
+        alert('Функция saveSettings не определена');
+      }
+    });
+  </script>
 </body>
 </html>
