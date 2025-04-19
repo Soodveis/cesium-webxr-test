@@ -149,7 +149,9 @@ window.saveSettings = async function () {
     viewer.dataSources.add(kmlLayer);
     viewer.flyTo(kmlLayer);
 
-    fallbackGeolocation();
+    setTimeout(() => {
+      fallbackGeolocation();
+    }, 2000);
   
   } catch (err) {
     console.error("Ошибка загрузки KML:", err);
