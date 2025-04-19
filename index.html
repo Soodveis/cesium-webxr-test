@@ -71,7 +71,7 @@
   <script type="module">
     import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-    let viewer, gpsEntity = null, hasCentered = false;
+    let viewer, gpsEntity = null, hasCentered = false, arRenderer = null;
 
     function showMessage(message) {
       const box = document.getElementById('messageBox');
@@ -162,11 +162,11 @@
           domOverlay: { root: document.body }
         });
         showMessage("WebXR AR-сессия успешно запущена!");
-        const renderer = new THREE.WebGLRenderer({ alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true;
-        document.body.appendChild(renderer.domElement);
-        renderer.xr.setSession(session);
+        arRenderer = new THREE.WebGLRenderer({ alpha: true });
+        arRenderer.setSize(window.innerWidth, window.innerHeight);
+        arRenderer.xr.enabled = true;
+        document.body.appendChild(arRenderer.domElement);
+        arRenderer.xr.setSession(session);
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
         scene.add(camera);
@@ -175,12 +175,14 @@
         const cube = new THREE.Mesh(geometry, material);
         cube.position.set(0, 0, -1);
         scene.add(cube);
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
+        arRenderer.setAnimationLoop(() => {
+          arRenderer.render(scene, camera);
         });
         session.addEventListener('end', () => {
-          renderer.setAnimationLoop(null);
-          renderer.domElement.remove();
+          arRenderer.setAnimationLoop(null);
+          if (arRenderer.domElement && arRenderer.domElement.remove) {
+            arRenderer.domElement.remove();
+          }
         });
       } catch (error) {
         showMessage("Ошибка AR-сессии: " + error.message);
@@ -225,6 +227,7 @@
             viewer.camera.flyTo({ destination: position });
             hasCentered = true;
           }
+          if (viewer) viewer.trackedEntity = gpsEntity; // гарантированное закрепление
           document.getElementById('gpsStatus').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }, err => {
           document.getElementById('gpsStatus').textContent = "Ошибка GPS: " + err.message;
