@@ -96,6 +96,8 @@ function fallbackGeolocation() {
 }
 
 window.saveSettings = async function () {
+  localStorage.setItem('cesiumToken', document.getElementById('accessToken').value);
+  localStorage.setItem('cesiumAssetId', document.getElementById('assetId').value);
   const accessToken = document.getElementById('accessToken').value.trim();
   const assetId = parseInt(document.getElementById('assetId').value.trim());
 
@@ -117,6 +119,9 @@ window.saveSettings = async function () {
 
   viewer.scene.globe.enableLighting = true;
 
+  if (gpsEntity) {
+    viewer.entities.remove(gpsEntity);
+  }
   gpsEntity = viewer.entities.add({
     name: "GPS Marker",
     position: Cesium.Cartesian3.fromDegrees(0, 0),
@@ -144,3 +149,10 @@ window.saveSettings = async function () {
 };
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
+
+window.addEventListener('DOMContentLoaded', () => {
+  const storedToken = localStorage.getItem('cesiumToken');
+  const storedAssetId = localStorage.getItem('cesiumAssetId');
+  if (storedToken) document.getElementById('accessToken').value = storedToken;
+  if (storedAssetId) document.getElementById('assetId').value = storedAssetId;
+});
