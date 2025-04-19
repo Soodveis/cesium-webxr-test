@@ -112,9 +112,12 @@ window.saveSettings = async function () {
     });
   }
 
+  // Полная очистка сцены
   viewer.dataSources.removeAll();
   viewer.entities.removeAll();
   viewer.scene.primitives.removeAll();
+  viewer.scene.groundPrimitives.removeAll();
+  viewer.scene.imageryLayers.removeAll();
 
   try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
