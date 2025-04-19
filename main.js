@@ -127,8 +127,8 @@ window.saveSettings = async function () {
   });
 
   try {
-    const kmlLayer = await Cesium.KmlDataSource.load(
-      Cesium.IonResource.fromAssetId(assetId),
+    const resource = await Cesium.IonResource.fromAssetId(assetId);
+    const kmlLayer = await Cesium.KmlDataSource.load(resource,
       { camera: viewer.scene.camera, canvas: viewer.scene.canvas }
     );
     viewer.dataSources.add(kmlLayer);
