@@ -114,7 +114,9 @@
         });
         const dataSource = await viewer.dataSources.add(kmlDataSource);
         console.log("KML загружен, центрируем камеру...");
-        viewer.flyTo(dataSource);
+        if (viewer.scene && viewer.scene.camera) {
+          viewer.flyTo(dataSource);
+        }
       } catch (error) {
         console.error("Ошибка загрузки KML:", error);
         alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
