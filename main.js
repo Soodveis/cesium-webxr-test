@@ -126,6 +126,17 @@ window.saveSettings = async function () {
 
     await viewer.dataSources.add(kmlLayer);
 
+    console.log("Всего сущностей в KML:", kmlLayer.entities.values.length);
+    kmlLayer.entities.values.forEach(entity => {
+      const pos = entity.position?.getValue(Cesium.JulianDate.now());
+      if (pos) {
+        const carto = Cesium.Cartographic.fromCartesian(pos);
+        console.log("Entity координаты:", Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height);
+      } else {
+        console.warn("Entity без позиции:", entity);
+      }
+    });
+
     const validEntities = kmlLayer.entities.values.filter(entity => {
       const position = entity.position?.getValue(Cesium.JulianDate.now());
       return position !== undefined;
