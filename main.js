@@ -1,4 +1,4 @@
-// main.js — обновлённый с FIX/FLOAT и иконкой вместо точки
+// main.js — правки: terrain по умолчанию + KML слой через assetId
 let viewer = null;
 let gpsEntity = null;
 let useRTK = false;
@@ -106,7 +106,7 @@ window.saveSettings = async function () {
 
   Cesium.Ion.defaultAccessToken = accessToken;
 
-  const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(assetId);
+  const terrain = Cesium.createWorldTerrain();
 
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: terrain,
@@ -125,6 +125,17 @@ window.saveSettings = async function () {
       scale: 0.05
     }
   });
+
+  try {
+    const kmlLayer = await Cesium.KmlDataSource.load(
+      Cesium.IonResource.fromAssetId(assetId),
+      { camera: viewer.scene.camera, canvas: viewer.scene.canvas }
+    );
+    viewer.dataSources.add(kmlLayer);
+  } catch (err) {
+    console.error("Ошибка загрузки KML:", err);
+    alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
+  }
 
   fallbackGeolocation();
 };
