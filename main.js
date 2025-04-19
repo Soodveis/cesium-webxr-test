@@ -81,7 +81,7 @@ function updateGPS(lat, lon, fix = 0) {
     fixEl.className = 'none';
   }
 
-  if (!viewer) return;
+  if (!viewer || viewer.scene.mode !== Cesium.SceneMode.SCENE3D) return;
   const position = Cesium.Cartesian3.fromDegrees(lon, lat);
   if (!gpsEntity) {
     gpsEntity = viewer.entities.add({
