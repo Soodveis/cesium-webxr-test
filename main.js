@@ -1,4 +1,4 @@
-// main.js — правки: terrain по умолчанию + KML слой через assetId
+// main.js — правки: terrain по умолчанию + KML слой через assetId + полная очистка сцены
 let viewer = null;
 let useRTK = false;
 let port, reader;
@@ -101,7 +101,6 @@ window.saveSettings = async function () {
   }
 
   Cesium.Ion.defaultAccessToken = accessToken;
-
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   if (!viewer) {
@@ -111,9 +110,13 @@ window.saveSettings = async function () {
       shouldAnimate: true,
       scene3DOnly: true
     });
-    viewer.entities.removeAll();
-    viewer.dataSources.removeAll();
   }
+
+  // Полная очистка сцены
+  viewer.dataSources.removeAll();
+  viewer.entities.removeAll();
+  viewer.scene.primitives.removeAll();
+
   try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
     const kmlLayer = await Cesium.KmlDataSource.load(resource, {
@@ -121,10 +124,10 @@ window.saveSettings = async function () {
       canvas: viewer.scene.canvas,
       clampToGround: true
     });
-    viewer.dataSources.add(kmlLayer);
-    viewer.flyTo(kmlLayer);
+    await viewer.dataSources.add(kmlLayer);
+    await viewer.flyTo(kmlLayer);
 
-    // Удаляем лишние сущности: на (0,0), и те, что слишком высоко висят
+    // Удаляем лишние сущности
     const badEntities = kmlLayer.entities.values.filter(entity => {
       const position = entity.position?.getValue(Cesium.JulianDate.now());
       if (!position) return true;
@@ -143,7 +146,7 @@ window.saveSettings = async function () {
     console.error("Ошибка загрузки KML:", err);
     alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
   }
-}
+};
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
 
