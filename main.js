@@ -127,14 +127,7 @@ window.saveSettings = async function () {
     scene3DOnly: true
   });
 
-  gpsEntity = viewer.entities.add({
-    name: "GPS Marker",
-    position: Cesium.Cartesian3.fromDegrees(0, 0),
-    billboard: {
-      image: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-      scale: 0.05
-    }
-  });
+  
 
   try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
@@ -145,6 +138,14 @@ window.saveSettings = async function () {
     });
     viewer.dataSources.add(kmlLayer);
     viewer.flyTo(kmlLayer);
+  gpsEntity = viewer.entities.add({
+    name: "GPS Marker",
+    position: Cesium.Cartesian3.fromDegrees(0, 0),
+    billboard: {
+      image: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+      scale: 0.05
+    }
+  });
   } catch (err) {
     console.error("Ошибка загрузки KML:", err);
     alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
