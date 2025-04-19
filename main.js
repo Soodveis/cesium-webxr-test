@@ -105,9 +105,16 @@ window.saveSettings = async function () {
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   if (!viewer) {
-      
-
-  try {
+    viewer = new Cesium.Viewer('cesiumContainer', {
+      terrainProvider: terrain,
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+      shouldAnimate: true,
+      scene3DOnly: true
+    });
+    viewer.entities.removeAll();
+    viewer.dataSources.removeAll();
+  }
+try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
     const kmlLayer = await Cesium.KmlDataSource.load(resource, {
       camera: viewer.scene.camera,
@@ -138,7 +145,7 @@ window.saveSettings = async function () {
   }
 
   // fallbackGeolocation перенесён ниже
-};
+  }
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
 
