@@ -114,7 +114,7 @@ window.saveSettings = async function () {
     viewer.entities.removeAll();
     viewer.dataSources.removeAll();
   }
-try {
+  try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
     const kmlLayer = await Cesium.KmlDataSource.load(resource, {
       camera: viewer.scene.camera,
@@ -124,28 +124,26 @@ try {
     viewer.dataSources.add(kmlLayer);
     viewer.flyTo(kmlLayer);
 
-    // Удаляем сущности на (0, 0)
+    // Удаляем лишние сущности: на (0,0), и те, что слишком высоко висят
     const badEntities = kmlLayer.entities.values.filter(entity => {
       const position = entity.position?.getValue(Cesium.JulianDate.now());
-      if (!position) return false;
+      if (!position) return true;
       const carto = Cesium.Cartographic.fromCartesian(position);
       const lon = Cesium.Math.toDegrees(carto.longitude);
       const lat = Cesium.Math.toDegrees(carto.latitude);
-      return lon === 0 && lat === 0;
+      const height = carto.height;
+      return (lon === 0 && lat === 0) || height > 10;
     });
     badEntities.forEach(entity => kmlLayer.entities.remove(entity));
 
     setTimeout(() => {
       fallbackGeolocation();
     }, 2000);
-  
   } catch (err) {
     console.error("Ошибка загрузки KML:", err);
     alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
   }
-
-  // fallbackGeolocation перенесён ниже
-  }
+}
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
 
