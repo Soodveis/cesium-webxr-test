@@ -121,13 +121,8 @@ window.saveSettings = async function () {
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   if (viewer) {
-    if (gpsEntity) {
-      viewer.entities.remove(gpsEntity);
-      gpsEntity = null;
-    }
-    viewer.entities.removeAll();
-    viewer.dataSources.removeAll();
-    viewer.destroy();
+    location.reload();
+    return;
   }
 
   viewer = new Cesium.Viewer('cesiumContainer', {
