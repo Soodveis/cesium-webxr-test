@@ -129,6 +129,17 @@ window.saveSettings = async function () {
     viewer.dataSources.add(kmlLayer);
     viewer.flyTo(kmlLayer);
 
+    // Удаляем сущности на (0, 0)
+    const badEntities = kmlLayer.entities.values.filter(entity => {
+      const position = entity.position?.getValue(Cesium.JulianDate.now());
+      if (!position) return false;
+      const carto = Cesium.Cartographic.fromCartesian(position);
+      const lon = Cesium.Math.toDegrees(carto.longitude);
+      const lat = Cesium.Math.toDegrees(carto.latitude);
+      return lon === 0 && lat === 0;
+    });
+    badEntities.forEach(entity => kmlLayer.entities.remove(entity));
+
     setTimeout(() => {
       fallbackGeolocation();
     }, 2000);
