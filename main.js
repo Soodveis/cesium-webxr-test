@@ -106,7 +106,7 @@ window.saveSettings = async function () {
 
   Cesium.Ion.defaultAccessToken = accessToken;
 
-  const terrain = Cesium.createWorldTerrain();
+  const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: terrain,
