@@ -111,28 +111,7 @@ window.saveSettings = async function () {
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   if (viewer) {
-    if (gpsEntity) {
-      viewer.entities.remove(gpsEntity);
-      gpsEntity = null;
-    }
-    viewer.entities.removeAll();
-    viewer.dataSources.removeAll();
-    viewer.destroy();
-  }
-
-  viewer = new Cesium.Viewer('cesiumContainer', {
-    terrainProvider: terrain,
-    imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-    shouldAnimate: true,
-    scene3DOnly: true
-  });
-
-  viewer.scene.globe.enableLighting = true;
-
-  if (gpsEntity) {
-    viewer.entities.remove(gpsEntity);
-  }
-  gpsEntity = viewer.entities.add({
+    gpsEntity = viewer.entities.add({
     name: "GPS Marker",
     position: Cesium.Cartesian3.fromDegrees(0, 0),
     billboard: {
