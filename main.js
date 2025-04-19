@@ -148,13 +148,15 @@ window.saveSettings = async function () {
     });
     viewer.dataSources.add(kmlLayer);
     viewer.flyTo(kmlLayer);
+
+    fallbackGeolocation();
   
   } catch (err) {
     console.error("Ошибка загрузки KML:", err);
     alert("Не удалось загрузить KML-слой. Проверьте Asset ID");
   }
 
-  fallbackGeolocation();
+  // fallbackGeolocation перенесён ниже
 };
 
 document.getElementById('connectRTK').addEventListener('click', connectToRTK);
