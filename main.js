@@ -110,6 +110,12 @@ window.saveSettings = async function () {
 
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
+  if (viewer) {
+    viewer.entities.removeAll();
+    viewer.dataSources.removeAll();
+    viewer.destroy();
+  }
+
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: terrain,
     imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
