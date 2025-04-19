@@ -105,26 +105,7 @@ window.saveSettings = async function () {
   const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
   if (!viewer) {
-    viewer = new Cesium.Viewer('cesiumContainer', {
-      terrainProvider: terrain,
-      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-      shouldAnimate: true,
-      scene3DOnly: true
-    });
-  } else {
-    viewer.entities.removeAll();
-    viewer.dataSources.removeAll();
-  }
-
-  
-  viewer = new Cesium.Viewer('cesiumContainer', {
-    terrainProvider: terrain,
-    imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-    shouldAnimate: true,
-    scene3DOnly: true
-  });
-
-  
+      
 
   try {
     const resource = await Cesium.IonResource.fromAssetId(assetId);
