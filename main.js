@@ -1,7 +1,6 @@
-// Подключение к встроенному GPS и отображение координат в #gpsCoordinates
+// Подключение к встроенному GPS и отображение координат и статуса RTK в #gpsCoordinates
 
 const gpsDiv = document.getElementById('gpsCoordinates');
-const rtkDiv = document.getElementById('rtkStatus');
 
 if (!gpsDiv) {
   console.error('Элемент #gpsCoordinates не найден!');
@@ -10,7 +9,16 @@ if (!gpsDiv) {
     (position) => {
       const lat = position.coords.latitude.toFixed(6);
       const lon = position.coords.longitude.toFixed(6);
-      gpsDiv.textContent = `GPS: ${lat}, ${lon}`;
+
+      // Симуляция RTK статуса
+      const statuses = ['NO FIX', 'FLOAT', 'FIX'];
+      const random = Math.floor(Math.random() * statuses.length);
+      const rtk = statuses[random];
+
+      gpsDiv.textContent = `GPS: ${lat}, ${lon} | RTK: ${rtk}`;
+      gpsDiv.style.color =
+        rtk === 'FIX' ? 'lime' : rtk === 'FLOAT' ? 'orange' : 'gray';
+
       console.log(`Получены координаты: широта ${lat}, долгота ${lon}`);
     },
     (error) => {
@@ -25,12 +33,5 @@ if (!gpsDiv) {
   );
 } else {
   gpsDiv.textContent = 'GPS: не поддерживается';
-  if (rtkDiv) {
-  // Симулируем смену статуса RTK
-  const statuses = ['NO FIX', 'FLOAT', 'FIX'];
-  const random = Math.floor(Math.random() * statuses.length);
-  rtkDiv.textContent = `RTK: ${statuses[random]}`;
-}
-
   console.warn('Геолокация не поддерживается браузером.');
 }
