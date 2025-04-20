@@ -1,3 +1,5 @@
+// Подключение к встроенному GPS и отображение координат в #gpsCoordinates
+
 const gpsDiv = document.getElementById('gpsCoordinates');
 
 if (!gpsDiv) {
@@ -8,6 +10,7 @@ if (!gpsDiv) {
       const lat = position.coords.latitude.toFixed(6);
       const lon = position.coords.longitude.toFixed(6);
       gpsDiv.textContent = `GPS: ${lat}, ${lon}`;
+      console.log(`Получены координаты: широта ${lat}, долгота ${lon}`);
     },
     (error) => {
       gpsDiv.textContent = `GPS: ошибка получения координат`;
@@ -21,4 +24,5 @@ if (!gpsDiv) {
   );
 } else {
   gpsDiv.textContent = 'GPS: не поддерживается';
+  console.warn('Геолокация не поддерживается браузером.');
 }
