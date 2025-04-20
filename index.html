@@ -1,155 +1,242 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cesium RTK Demo</title>
+  <meta charset="UTF-8">
+  <title>Cesium + WebXR Viewer</title>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <style>
     html, body, #cesiumContainer {
-      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: black;
     }
-    #ui {
+    #enterAR, #exitAR, #tokenForm {
+      position: absolute; z-index: 1000; font-size: 16px;
+    }
+    #enterAR {
+      top: 10px; left: 10px; padding: 12px 20px; background: #28a745; color: white; border-radius: 6px; cursor: pointer;
+    }
+    #exitAR {
+      top: 10px; right: 10px; padding: 12px 20px; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; display: none;
+    }
+    #tokenForm {
+      top: 60px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 6px;
+    }
+    #tokenForm input { width: 250px; margin-bottom: 5px; }
+    canvas.xr-canvas {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      padding: 15px;
-      border-radius: 10px;
-      font-family: sans-serif;
-      width: 400px;
-    }
-    input, button {
-      margin: 5px 0;
+      top: 0;
+      left: 0;
       width: 100%;
-      padding: 8px;
+      height: 100%;
     }
-    #gpsText {
+    #messageBox {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.5);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-family: monospace;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 18px;
+      z-index: 1100;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
-  <div id="ui">
-    <button onclick="enterAR()">Войти в AR</button><br />
-    <label>Access Token:</label><br />
-    <input type="text" id="accessToken" /><br />
-    <label>Asset ID:</label><br />
-    <input type="text" id="assetId" /><br />
-    <button onclick="loadScene()">Загрузить сцену</button>
-    <button id="connectRTK">Подключиться к RTK (USB)</button>
+  <button id="enterAR" disabled>Войти в AR</button>
+  <button id="exitAR">Выйти из AR</button>
+  <div id="tokenForm">
+    <div>
+      Access Token: <input id="accessToken" placeholder="Вставьте Access Token">
+    </div>
+    <div>
+      Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
+    </div>
+    <button id="loadScene">Загрузить сцену</button>
   </div>
-  <div id="gpsText">GPS: -</div>
+  <div id="messageBox"></div>
+  <script type="module">
+    import * as THREE from 'https://cdn.skypack.dev/three@0.150.1';
 
-  <script>
-    let viewer, markerEntity, useRTK = false;
-    let port, reader;
+    let viewer;
+    let currentSession = null;
+    let renderer, canvas, scene, camera, cube;
+    let refSpace = null;
 
-    async function loadScene() {
+    function showMessage(message) {
+      const box = document.getElementById('messageBox');
+      box.textContent = message;
+      box.style.display = 'block';
+      setTimeout(() => box.style.display = 'none', 3000);
+    }
+
+    function validateInputs() {
       const token = document.getElementById('accessToken').value.trim();
-      const assetId = parseInt(document.getElementById('assetId').value.trim());
+      const assetId = document.getElementById('assetId').value.trim();
+      document.getElementById('enterAR').disabled = !(token && assetId);
+    }
+
+    document.getElementById('accessToken').addEventListener('input', validateInputs);
+    document.getElementById('assetId').addEventListener('input', validateInputs);
+
+    async function loadScene(token, assetId) {
       Cesium.Ion.defaultAccessToken = token;
-
-      viewer = new Cesium.Viewer('cesiumContainer', {
-        terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(1),
-        imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
-        shouldAnimate: true,
-        scene3DOnly: true
-      });
-
-      const resource = await Cesium.IonResource.fromAssetId(assetId);
-      viewer.dataSources.add(Cesium.KmlDataSource.load(resource, {
-        camera: viewer.scene.camera,
-        canvas: viewer.scene.canvas,
-        clampToGround: true
-      }));
-    }
-
-    async function connectToRTK() {
-      if (!('serial' in navigator)) {
-        alert('Web Serial API не поддерживается этим браузером.');
-        return;
-      }
-      try {
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 });
-        reader = port.readable.getReader();
-        useRTK = true;
-        readFromRTK();
-      } catch (err) {
-        alert('Ошибка подключения к RTK: ' + err);
-      }
-    }
-
-    async function readFromRTK() {
-      let buffer = '';
-      while (port.readable) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += new TextDecoder().decode(value);
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (line.startsWith('$GPGGA')) {
-            const coords = parseGGA(line);
-            if (coords) updateGPS(coords.lat, coords.lon);
-          }
-        }
-      }
-    }
-
-    function parseGGA(gga) {
-      const parts = gga.split(',');
-      if (parts.length < 6 || !parts[2] || !parts[4]) return null;
-      const lat = convert(parts[2], parts[3]);
-      const lon = convert(parts[4], parts[5]);
-      return { lat, lon };
-    }
-
-    function convert(coord, dir) {
-      const degrees = parseInt(coord.slice(0, dir === 'N' || dir === 'S' ? 2 : 3));
-      const minutes = parseFloat(coord.slice(dir === 'N' || dir === 'S' ? 2 : 3));
-      let dec = degrees + minutes / 60;
-      if (dir === 'S' || dir === 'W') dec *= -1;
-      return dec;
-    }
-
-    function updateGPS(lat, lon) {
-      document.getElementById('gpsText').textContent = `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-      if (viewer && markerEntity) {
-        markerEntity.position = Cesium.Cartesian3.fromDegrees(lon, lat);
-      } else if (viewer && !markerEntity) {
-        markerEntity = viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(lon, lat),
-          billboard: {
-            image: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            scale: 0.1
-          }
+      if (!viewer) {
+        viewer = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+          baseLayerPicker: true,
+          shouldAnimate: true,
+          scene3DOnly: true,
+          shadows: true,
+          useDefaultRenderLoop: true,
         });
       }
-    }
-
-    function fallbackGeolocation() {
-      if (!useRTK && 'geolocation' in navigator) {
-        navigator.geolocation.watchPosition(pos => {
-          updateGPS(pos.coords.latitude, pos.coords.longitude);
-        }, err => console.warn(err), { enableHighAccuracy: true });
+      viewer.dataSources.removeAll();
+      try {
+        const resource = await Cesium.IonResource.fromAssetId(Number(assetId));
+        const kmlDataSource = await Cesium.KmlDataSource.load(resource);
+        viewer.dataSources.add(kmlDataSource);
+        viewer.flyTo(kmlDataSource);
+      } catch (error) {
+        console.error("Ошибка загрузки KML:", error);
+        alert("Ошибка загрузки сцены. Проверьте Asset ID и Token.");
       }
     }
 
-    document.getElementById('connectRTK').addEventListener('click', connectToRTK);
-    window.addEventListener('DOMContentLoaded', fallbackGeolocation);
+    document.getElementById('loadScene').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Пожалуйста, введите Access Token и Asset ID");
+        return;
+      }
+
+      localStorage.setItem('cesiumToken', token);
+      localStorage.setItem('cesiumAssetId', assetId);
+
+      await loadScene(token, assetId);
+    };
+
+    document.getElementById('enterAR').onclick = async function () {
+      const token = document.getElementById('accessToken').value.trim();
+      const assetId = document.getElementById('assetId').value.trim();
+
+      if (!token || !assetId) {
+        alert("Сначала введите Access Token и Asset ID.");
+        return;
+      }
+
+      if (!('xr' in navigator)) {
+        alert("WebXR не поддерживается вашим браузером.");
+        return;
+      }
+
+      try {
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!supported) {
+          alert("WebXR AR не поддерживается на этом устройстве.");
+          return;
+        }
+
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test', 'dom-overlay'],
+          optionalFeatures: ['local-floor', 'local', 'viewer'],
+          domOverlay: { root: document.body }
+        });
+
+        currentSession = session;
+        document.getElementById('exitAR').style.display = 'block';
+        document.getElementById('tokenForm').style.display = 'none';
+        document.getElementById('enterAR').style.display = 'none';
+        document.getElementById('cesiumContainer').style.display = 'none';
+
+        canvas = document.createElement('canvas');
+        canvas.className = 'xr-canvas';
+        document.body.appendChild(canvas);
+
+        const gl = canvas.getContext('webgl2', { xrCompatible: true }) || canvas.getContext('webgl', { xrCompatible: true });
+
+        if (!gl) {
+          alert("Не удалось инициализировать WebGL контекст.");
+          return;
+        }
+
+        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+        refSpace = await session.requestReferenceSpace('local');
+        const viewerSpace = await session.requestReferenceSpace('viewer');
+        const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, context: gl });
+        renderer.autoClear = false;
+        renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local');
+        renderer.xr.setSession(session);
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera();
+
+        const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true });
+        cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        function onXRFrame(time, frame) {
+          if (!frame || !refSpace || !renderer) return;
+          try {
+            const viewerPose = frame.getViewerPose(refSpace);
+            if (viewerPose) {
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0];
+                const hitPose = hit.getPose(refSpace);
+                cube.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z);
+              }
+            }
+            renderer.render(scene, camera);
+          } catch (err) {
+            console.warn("onXRFrame error:", err);
+          }
+        }
+
+        renderer.setAnimationLoop(onXRFrame);
+
+        session.addEventListener('end', () => {
+          currentSession = null;
+          refSpace = null;
+          if (canvas && canvas.parentNode) canvas.remove();
+          document.getElementById('exitAR').style.display = 'none';
+          document.getElementById('enterAR').style.display = 'block';
+          document.getElementById('tokenForm').style.display = 'block';
+          document.getElementById('cesiumContainer').style.display = 'block';
+        });
+
+      } catch (err) {
+        alert("Ошибка запуска AR: " + err);
+        console.error(err);
+      }
+    };
+
+    document.getElementById('exitAR').onclick = function () {
+      if (currentSession) {
+        currentSession.end();
+      }
+    };
+
+    window.onload = async () => {
+      const token = localStorage.getItem('cesiumToken');
+      const assetId = localStorage.getItem('cesiumAssetId');
+      if (token && assetId) {
+        document.getElementById('accessToken').value = token;
+        document.getElementById('assetId').value = assetId;
+        validateInputs();
+        await loadScene(token, assetId);
+      }
+    };
   </script>
 </body>
 </html>
