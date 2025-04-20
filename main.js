@@ -1,6 +1,7 @@
 // Подключение к встроенному GPS и отображение координат в #gpsCoordinates
 
 const gpsDiv = document.getElementById('gpsCoordinates');
+const rtkDiv = document.getElementById('rtkStatus');
 
 if (!gpsDiv) {
   console.error('Элемент #gpsCoordinates не найден!');
@@ -24,5 +25,12 @@ if (!gpsDiv) {
   );
 } else {
   gpsDiv.textContent = 'GPS: не поддерживается';
+  if (rtkDiv) {
+  // Симулируем смену статуса RTK
+  const statuses = ['NO FIX', 'FLOAT', 'FIX'];
+  const random = Math.floor(Math.random() * statuses.length);
+  rtkDiv.textContent = `RTK: ${statuses[random]}`;
+}
+
   console.warn('Геолокация не поддерживается браузером.');
 }
