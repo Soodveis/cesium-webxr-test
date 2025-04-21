@@ -1,11 +1,6 @@
 const connectButton = document.getElementById('connectRTK');
 
 if (connectButton) {
-  if (!('serial' in navigator)) {
-  console.error('❌ Web Serial API не поддерживается этим браузером.');
-  alert('Ваш браузер не поддерживает Web Serial API. Попробуйте в Chrome на ПК или обновите устройство.');
-  return;
-}
   connectButton.addEventListener('click', async () => {
     try {
       // Запрос порта
