@@ -23,7 +23,7 @@
     }
     #tokenForm input { width: 375px; height: 32px; font-size: 14px; margin-bottom: 10px; }
     #tokenForm button { font-size: 16px; padding: 12px 20px; transform: scale(1.0); transform-origin: top left; }
-    #connectRTK { display: inline-block; font-size: 16px; padding: 30px 40px; width: 100px; margin-left: 15px; transform: scale(1.0); transform-origin: top left; }
+    #connectRTK { display: inline-block; font-size: 16px; padding: 12px 15px; width: 200px; margin-left: 15px; transform: scale(1.0); transform-origin: top left; }
     canvas.xr-canvas {
       position: absolute;
       top: 0;
@@ -69,7 +69,7 @@
       Asset ID: <input id="assetId" placeholder="Вставьте Asset ID">
     </div>
     <button id="loadScene">Загрузить сцену</button>
-    <input type="button" id="connectRTK" value="Подключиться к RTK (USB)">
+    <button id="connectRTK">Подключиться к RTK (USB)</button>
   </div>
   <div id="messageBox"></div>
   <script type="module">
