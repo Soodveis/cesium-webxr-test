@@ -1,37 +1,33 @@
-// Подключение к встроенному GPS и отображение координат и статуса RTK в #gpsCoordinates
+const connectButton = document.getElementById('connectRTK');
 
-const gpsDiv = document.getElementById('gpsCoordinates');
+if (connectButton) {
+  connectButton.addEventListener('click', async () => {
+    try {
+      // Запрос порта
+      const port = await navigator.serial.requestPort();
+      
+      // Открываем порт
+      await port.open({ baudRate: 115200 });
 
-if (!gpsDiv) {
-  console.error('Элемент #gpsCoordinates не найден!');
-} else if ('geolocation' in navigator) {
-  navigator.geolocation.watchPosition(
-    (position) => {
-      const lat = position.coords.latitude.toFixed(6);
-      const lon = position.coords.longitude.toFixed(6);
+      console.log('✅ USB-порт открыт');
 
-      // Симуляция RTK статуса
-      const statuses = ['NO FIX', 'FLOAT', 'FIX'];
-      const random = Math.floor(Math.random() * statuses.length);
-      const rtk = statuses[random];
+      const decoder = new TextDecoderStream();
+      const inputDone = port.readable.pipeTo(decoder.writable);
+      const inputStream = decoder.readable;
 
-      gpsDiv.textContent = `GPS: ${lat}, ${lon} | RTK: ${rtk}`;
-      gpsDiv.style.color =
-        rtk === 'FIX' ? 'lime' : rtk === 'FLOAT' ? 'orange' : 'gray';
+      const reader = inputStream.getReader();
 
-      console.log(`Получены координаты: широта ${lat}, долгота ${lon}`);
-    },
-    (error) => {
-      gpsDiv.textContent = `GPS: ошибка получения координат`;
-      console.error('Ошибка геолокации:', error);
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 5000
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          console.log('📡 Данные от RTK:', value);
+        }
+      }
+
+      reader.releaseLock();
+    } catch (error) {
+      console.error('❌ Ошибка подключения к USB:', error);
     }
-  );
-} else {
-  gpsDiv.textContent = 'GPS: не поддерживается';
-  console.warn('Геолокация не поддерживается браузером.');
+  });
 }
